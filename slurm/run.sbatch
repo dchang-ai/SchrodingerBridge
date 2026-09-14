@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24G
 #SBATCH --time=04:00:00
-#SBATCH --exclude=192-222-51-248,192-222-56-117,192-222-56-240   # GH200 nodes are aarch64; the venv is x86_64
+#SBATCH --exclude=192-222-51-248,192-222-56-117,192-222-56-240,129-146-8-103,129-146-99-85,192-222-54-123   # GH200 nodes are aarch64; the 129-146-*/192-222-* VMs mount NFS over a VPN and hang importing jax
 #SBATCH --output=/mnt/data0/shared/dominic/SchrodingerBridge/logs/%x_%j.out   # logs/ must exist before sbatch
 #SBATCH --error=/mnt/data0/shared/dominic/SchrodingerBridge/logs/%x_%j.err
 set -euo pipefail
