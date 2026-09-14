@@ -80,10 +80,9 @@ def toy_dataset(name: str, n: int, rng: np.random.Generator) -> np.ndarray:
         t = 1.5 * np.pi * (1 + 2 * rng.uniform(0, 1, n))
         x = np.stack([t * np.cos(t), t * np.sin(t)], 1) / 7.0 + 0.05 * rng.standard_normal((n, 2))
     elif name == "checkerboard":
-        x1 = rng.uniform(-4, 4, n)
-        x2 = rng.uniform(-2, 2, n) + (np.floor(x1) % 2) * 2 - 2 + 0.0
-        x2 = np.where(x2 > 2, x2 - 4, x2)
-        x = np.stack([x1, x2], 1) / 2.0
+        x1 = rng.uniform(-2, 2, n)
+        x2 = rng.uniform(0, 1, n) - rng.integers(0, 2, n) * 2 + (np.floor(x1) % 2)
+        x = np.stack([x1, x2], 1)
     elif name == "8gaussians":
         centers = np.array([[np.cos(a), np.sin(a)] for a in np.linspace(0, 2 * np.pi, 9)[:-1]]) * 2.5
         idx = rng.integers(0, 8, n)
