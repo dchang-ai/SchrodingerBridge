@@ -289,5 +289,24 @@ class UNet(eqx.Module):
         return self.conv_out(jax.nn.silu(self.norm_out(h)))
 
 
+class ScaledIncrement(eqx.Module):
+    """Wrap a network so that increment(k, x) = scale[k] * net(k, x).
+
+    With scale[k] = sqrt(2 gamma) of the transition attached to input index k, the raw
+    network output lives on the unit scale of the Gaussian noise for every step (the
+    epsilon-parametrisation of DDPM); the scales are static constants, not parameters.
+    """
+
+    net: eqx.Module
+    scales: tuple = eqx.field(static=True)
+
+    def __init__(self, net: eqx.Module, scales):
+        self.net = net
+        self.scales = tuple(float(s) for s in scales)
+
+    def __call__(self, k, x, **kwargs):
+        return jnp.asarray(self.scales, dtype=x.dtype)[k] * self.net(k, x, **kwargs)
+
+
 def count_params(model: eqx.Module) -> int:
     return sum(x.size for x in jax.tree_util.tree_leaves(eqx.filter(model, eqx.is_array)))
