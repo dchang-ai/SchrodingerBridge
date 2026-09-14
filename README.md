@@ -61,4 +61,58 @@ driver reloads the latest half-step checkpoint in `<outdir>/ckpt/`.
 
 ## Results
 
-*(filled in below as the runs complete)*
+All runs below were produced by the scripts in this repository on one A100 each
+(`logs/jobids.txt` lists the Slurm jobs).  Figures are regenerated with
+`scripts/plot_results.py`.
+
+### 1. Gaussian case with an analytic solution (sanity check of the IPF)
+
+`p_data = N(a, I)`, `p_prior = N(−a, I)`, `a = 0.1·1`, Brownian reference over T = 1/2 with
+N = 20 steps (γ = 1/40).  Proposition 46 of the paper gives the exact Schrödinger bridge:
+marginals unchanged and `Cov(X_0, X_N) = (√5−1)/2 ≈ 0.618`.  The network is the small MLP
+of Figure 9; 10 DSB iterations of 5 000 Adam steps each (batch 128).
+
+![gaussian](figures/gaussian_convergence.png)
+
+Estimated on 20 000 generated pairs (first coordinate; the analytic values are 0.1, 1, 0.618):
+
+| | iteration 1 (= SGM) | iteration 10 |
+|---|---|---|
+| d = 5: mean / var / cov | 0.005 / 0.813 / 0.515 | 0.094 / 1.006 / 0.605 |
+| d = 50: mean / var / cov | 0.018 / 1.237 / 0.693 | 0.078 / 1.074 / 0.632 |
+
+The first iteration (classical score-based model over a short horizon) is off in every
+statistic; IPF drives all three to their analytic values, as in Figure 2 of the paper.
+
+### 2. Two-dimensional toys with a short horizon (T = 0.2)
+
+N = 20, γ_k = 0.01, OU reference towards `N(mean(data), var(data))`, batch 512, cache of
+10 000 trajectories refreshed every 1 000 steps, 10 000 steps per half-step, 20 DSB
+iterations (the configuration of Appendix J.1).  With such a short horizon the forward
+noising process does not reach the Gaussian, so the SGM obtained after the first DSB
+iteration is poor; further iterations fix both endpoints (compare with Figure 1 of the paper).
+
+DSB iteration 1 (moons): top row forward chain from data, bottom row backward chain from the prior
+
+![moons1](figures/toy_moons_iter01.png)
+
+DSB iteration 20:
+
+![moons20](figures/toy_moons_iter20.png)
+
+Energy distance between 2 000 generated points and 2 000 data points (left) and between the
+forward endpoint and the prior (right), per DSB iteration (the estimator's noise floor is
+about 1e-3):
+
+![toy](figures/toy_energy_distance.png)
+
+| dataset | iteration 1 | iteration 20 |
+|---|---|---|
+| moons | 0.020 | 0.0028 |
+| circles | 0.0087 | 0.0028 |
+| S-curve | 0.093 | 0.0058 |
+| checkerboard | see `figures/` | |
+
+### 3. CIFAR-10
+
+*(in progress — see below)*
