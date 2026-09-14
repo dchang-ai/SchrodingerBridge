@@ -188,8 +188,8 @@ def run_dsb(
                 losses.append(loss)
                 if (it + 1) % cfg.log_every == 0 or it == steps - 1:
                     l = float(jnp.mean(jnp.stack(losses)))
-                    losses = []
-                    log(n=n, phase="backward", step=it + 1, loss=l, it_per_s=(it + 1) / (time.time() - t0))
+                    log(n=n, phase="backward", step=it + 1, loss=l, it_per_s=len(losses) / (time.time() - t0))
+                    losses, t0 = [], time.time()
             save(n, "backward")
             if eval_fn is not None:
                 key, ke = jax.random.split(key)
@@ -210,8 +210,8 @@ def run_dsb(
             losses.append(loss)
             if (it + 1) % cfg.log_every == 0 or it == cfg.train_steps - 1:
                 l = float(jnp.mean(jnp.stack(losses)))
-                losses = []
-                log(n=n, phase="forward", step=it + 1, loss=l, it_per_s=(it + 1) / (time.time() - t0))
+                log(n=n, phase="forward", step=it + 1, loss=l, it_per_s=len(losses) / (time.time() - t0))
+                losses, t0 = [], time.time()
         save(n, "forward")
 
     return eqx.combine(f_state.ema_params, static), eqx.combine(b_state.ema_params, static)
