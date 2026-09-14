@@ -40,6 +40,7 @@ def main():
     p.add_argument("--ch", type=int, default=64)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--loss-weighting", default="none", choices=["none", "gamma"])
+    p.add_argument("--scaled-output", action="store_true", help="increment = sqrt(2 gamma_k) * net(k, x)")
     p.add_argument("--dropout", type=float, default=0.0)
     p.add_argument("--eval-samples", type=int, default=64)
     p.add_argument("--fid-samples", type=int, default=0, help="if > 0, dump this many generated samples per DSB iteration as .npz")
@@ -51,7 +52,7 @@ def main():
         prior_mean=0.0, prior_std=1.0,
         num_dsb_iters=args.iters, train_steps=args.steps, first_train_steps=args.first_steps,
         batch_size=args.batch, cache_size=args.cache_size, cache_refresh=args.cache_refresh,
-        lr=args.lr, warmup=0, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting,
+        lr=args.lr, warmup=0, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting, scaled_output=args.scaled_output,
         use_dropout=args.dropout > 0, seed=args.seed, log_every=100,
     )
     ref = cfg.reference()

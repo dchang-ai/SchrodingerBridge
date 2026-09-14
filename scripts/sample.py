@@ -18,8 +18,8 @@ import numpy as np
 
 from dsb import ipf
 from dsb.data import cifar_to_uint8
-from dsb.networks import UNet
-from dsb.train import DSBConfig, Nets
+from dsb.networks import ScaledIncrement, UNet
+from dsb.train import DSBConfig, Nets, output_scales
 from dsb.utils import image_grid, save_png
 
 
@@ -28,11 +28,15 @@ def load(rundir: str, ckpt: str | None, ch: int = 64):
     ckdir = os.path.join(rundir, "ckpt")
     if ckpt is None:
         ckpt = json.load(open(os.path.join(ckdir, "latest.json")))["file"]
-    net = UNet(in_channels=3, ch=ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2, attn_resolutions=(16,),
-               image_size=32, key=jax.random.PRNGKey(0))
-    params, static = eqx.partition(net, eqx.is_array)
-    nets = eqx.tree_deserialise_leaves(os.path.join(ckdir, ckpt), Nets(params, params, params, params))
-    return cfg, eqx.combine(nets.f_ema, static), eqx.combine(nets.b_ema, static), ckpt
+    f_net = b_net = UNet(in_channels=3, ch=ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2, attn_resolutions=(16,),
+                         image_size=32, key=jax.random.PRNGKey(0))
+    if cfg.scaled_output:
+        sf, sb = output_scales(cfg.reference())
+        f_net, b_net = ScaledIncrement(f_net, sf), ScaledIncrement(b_net, sb)
+    f_params, f_static = eqx.partition(f_net, eqx.is_array)
+    b_params, b_static = eqx.partition(b_net, eqx.is_array)
+    nets = eqx.tree_deserialise_leaves(os.path.join(ckdir, ckpt), Nets(f_params, f_params, b_params, b_params))
+    return cfg, eqx.combine(nets.f_ema, f_static), eqx.combine(nets.b_ema, b_static), ckpt
 
 
 def main():

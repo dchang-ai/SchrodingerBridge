@@ -18,6 +18,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from . import ipf
+from .networks import ScaledIncrement
 from .schedule import OUReference, constant_gammas, symmetric_gammas
 
 
@@ -46,6 +47,7 @@ class DSBConfig:
     ema_decay: float = 0.999
     reset_optimizer: bool = True
     loss_weighting: str = "none"        # "none" (paper) or "gamma" (weight 1/(2 gamma_k))
+    scaled_output: bool = False         # increment = sqrt(2 gamma_k) * net(k, x) (epsilon-style parametrisation)
     use_dropout: bool = False
     # misc
     seed: int = 0
@@ -70,6 +72,13 @@ class Nets(eqx.Module):
     f_ema: eqx.Module
     b_params: eqx.Module
     b_ema: eqx.Module
+
+
+def output_scales(ref: OUReference):
+    """sqrt(2 gamma) of the transition attached to each input index: f_net input k in 0..N-1
+    uses gammas[k]; b_net input k in 1..N uses gammas[k-1] (index 0 unused)."""
+    g = np.sqrt(2.0 * np.asarray(ref.gammas, dtype=np.float64))
+    return tuple(g), tuple(np.concatenate([[g[0]], g]))
 
 
 def step_weights(cfg: DSBConfig, ref: OUReference):
@@ -109,11 +118,16 @@ def run_dsb(
     key = jax.random.PRNGKey(cfg.seed)
     key, kf, kb = jax.random.split(key, 3)
     f_net, b_net = make_net(kf), make_net(kb)
-    _, static = eqx.partition(f_net, eqx.is_array)
+    if cfg.scaled_output:
+        sf, sb = output_scales(ref)
+        f_net, b_net = ScaledIncrement(f_net, sf), ScaledIncrement(b_net, sb)
+    _, f_static = eqx.partition(f_net, eqx.is_array)
+    _, b_static = eqx.partition(b_net, eqx.is_array)
     optimizer = ipf.make_optimizer(cfg.lr, cfg.grad_clip, cfg.warmup)
     f_state = ipf.init_train_state(f_net, optimizer)
     b_state = ipf.init_train_state(b_net, optimizer)
-    train_step = ipf.make_train_step(optimizer, static, cfg.ema_decay, cfg.use_dropout)
+    train_step_f = ipf.make_train_step(optimizer, f_static, cfg.ema_decay, cfg.use_dropout)
+    train_step_b = ipf.make_train_step(optimizer, b_static, cfg.ema_decay, cfg.use_dropout)
     wf, wb = step_weights(cfg, ref)
 
     # ---- resume -----------------------------------------------------------------
@@ -155,13 +169,13 @@ def run_dsb(
     def forward_cache(f_ema, key):
         k1, k2 = jax.random.split(key)
         x0 = sample_data(k1, cfg.cache_size)
-        return ipf.simulate(eqx.combine(f_ema, static), x0, gammas, k2, forward=True)
+        return ipf.simulate(eqx.combine(f_ema, f_static), x0, gammas, k2, forward=True)
 
     @eqx.filter_jit
     def backward_cache(b_ema, key):
         k1, k2 = jax.random.split(key)
         xN = sample_prior(k1, cfg.cache_size)
-        return ipf.simulate(eqx.combine(b_ema, static), xN, gammas, k2, forward=False)
+        return ipf.simulate(eqx.combine(b_ema, b_static), xN, gammas, k2, forward=False)
 
     sample_cache = eqx.filter_jit(ipf.sample_cache)
 
@@ -184,7 +198,7 @@ def run_dsb(
                     if it % cfg.cache_refresh == 0:
                         cache = forward_cache(f_state.ema_params, k1)
                     ks, xs, tg = sample_cache(cache, k2, cfg.batch_size)
-                b_state, loss = train_step(b_state, ks, xs, tg, weights_for(wb, ks), k3)
+                b_state, loss = train_step_b(b_state, ks, xs, tg, weights_for(wb, ks), k3)
                 losses.append(loss)
                 if (it + 1) % cfg.log_every == 0 or it == steps - 1:
                     l = float(jnp.mean(jnp.stack(losses)))
@@ -193,7 +207,7 @@ def run_dsb(
             save(n, "backward")
             if eval_fn is not None:
                 key, ke = jax.random.split(key)
-                metrics = eval_fn(n, eqx.combine(b_state.ema_params, static), eqx.combine(f_state.ema_params, static), ke)
+                metrics = eval_fn(n, eqx.combine(b_state.ema_params, b_static), eqx.combine(f_state.ema_params, f_static), ke)
                 if metrics:
                     log(event="eval", n=n, **metrics)
 
@@ -206,7 +220,7 @@ def run_dsb(
             if it % cfg.cache_refresh == 0:
                 cache = backward_cache(b_state.ema_params, k1)
             ks, xs, tg = sample_cache(cache, k2, cfg.batch_size)
-            f_state, loss = train_step(f_state, ks, xs, tg, weights_for(wf, ks), k3)
+            f_state, loss = train_step_f(f_state, ks, xs, tg, weights_for(wf, ks), k3)
             losses.append(loss)
             if (it + 1) % cfg.log_every == 0 or it == cfg.train_steps - 1:
                 l = float(jnp.mean(jnp.stack(losses)))
@@ -214,4 +228,4 @@ def run_dsb(
                 losses, t0 = [], time.time()
         save(n, "forward")
 
-    return eqx.combine(f_state.ema_params, static), eqx.combine(b_state.ema_params, static)
+    return eqx.combine(f_state.ema_params, f_static), eqx.combine(b_state.ema_params, b_static)
