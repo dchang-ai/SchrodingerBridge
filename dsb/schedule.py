@@ -25,16 +25,22 @@ import jax.numpy as jnp
 import numpy as np
 
 
-def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1) -> np.ndarray:
+def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1, power: float = 1.0) -> np.ndarray:
     """Time-reversal invariant schedule of Appendix J.2.
 
-    gamma_k = gamma_min + (2k/N)(gamma_max - gamma_min) for k <= N/2 and
+    gamma_k = gamma_min + (2k/N)^power (gamma_max - gamma_min) for k <= N/2 and
     symmetric afterwards, so that gamma_k = gamma_{N-k}.  Returns N values.
+
+    power=1 is the linear ramp of the paper.  Its first two steps are 1e-5 and ~4e-3
+    (N=50): the noise sqrt(2 gamma_1) ~ 0.09 injected at the second-to-last backward
+    step is then 20x larger than the noise level the near-identity last step B(1, .)
+    was trained on, and stays in the samples as speckle.  power=2 (or 3) starts the ramp
+    gently so that consecutive steps differ by a small factor at both ends.
     """
     n = num_steps
     if n % 2 != 0:
         raise ValueError("num_steps must be even for the symmetric schedule")
-    half = np.array([gamma_min + (2 * k / n) * (gamma_max - gamma_min) for k in range(n // 2)])
+    half = np.array([gamma_min + (2 * k / n) ** power * (gamma_max - gamma_min) for k in range(n // 2)])
     return np.concatenate([half, half[::-1]]).astype(np.float32)
 
 

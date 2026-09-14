@@ -29,6 +29,7 @@ class DSBConfig:
     gamma_schedule: str = "symmetric"   # "symmetric" (App. J.2) or "constant"
     gamma_min: float = 1e-5
     gamma_max: float = 1e-1
+    gamma_power: float = 1.0            # ramp exponent of the symmetric schedule (1 = paper)
     gamma: float = 1e-2                 # used by the constant schedule
     prior_mean: float = 0.0
     prior_std: float = 1.0
@@ -56,7 +57,7 @@ class DSBConfig:
 
     def reference(self) -> OUReference:
         if self.gamma_schedule == "symmetric":
-            g = symmetric_gammas(self.num_steps, self.gamma_min, self.gamma_max)
+            g = symmetric_gammas(self.num_steps, self.gamma_min, self.gamma_max, self.gamma_power)
         elif self.gamma_schedule == "constant":
             g = constant_gammas(self.num_steps, self.gamma)
         else:
