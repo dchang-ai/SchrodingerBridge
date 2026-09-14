@@ -1,0 +1,92 @@
+"""Step-size schedule, reference dynamics and closed-form marginals.
+
+Conventions
+-----------
+We work with a discrete chain X_0, ..., X_N.  ``gammas[k]`` (k = 0..N-1) is the
+step size of the transition k -> k+1, i.e. the paper's gamma_{k+1}.
+
+The reference dynamics (paper: f(x) = -alpha x) is the Euler–Maruyama
+discretisation of an Ornstein–Uhlenbeck process targeting the Gaussian prior
+N(mean, var I):
+
+    X_{k+1} = X_k + gammas[k] * f(X_k) + sqrt(2 gammas[k]) Z,   f(x) = -(x - mean) / var.
+
+Because f is linear, the reference marginals X_k | X_0 are Gaussian and can be
+sampled in closed form (Appendix I, Technique 2).
+"""
+from __future__ import annotations
+
+import dataclasses
+
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+
+def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1) -> np.ndarray:
+    """Time-reversal invariant schedule of Appendix J.2.
+
+    gamma_k = gamma_min + (2k/N)(gamma_max - gamma_min) for k <= N/2 and
+    symmetric afterwards, so that gamma_k = gamma_{N-k}.  Returns N values.
+    """
+    n = num_steps
+    if n % 2 != 0:
+        raise ValueError("num_steps must be even for the symmetric schedule")
+    half = np.array([gamma_min + (2 * k / n) * (gamma_max - gamma_min) for k in range(n // 2)])
+    return np.concatenate([half, half[::-1]]).astype(np.float32)
+
+
+def constant_gammas(num_steps: int, gamma: float) -> np.ndarray:
+    return np.full((num_steps,), gamma, dtype=np.float32)
+
+
+@dataclasses.dataclass(frozen=True)
+class OUReference:
+    """Reference forward dynamics f(x) = -(x - mean)/var (OU targeting the prior)."""
+
+    gammas: np.ndarray  # (N,)
+    mean: float = 0.0
+    var: float = 1.0
+
+    @property
+    def num_steps(self) -> int:
+        return int(self.gammas.shape[0])
+
+    @property
+    def horizon(self) -> float:
+        return float(np.sum(self.gammas))
+
+    def drift(self, x):
+        return -(x - self.mean) / self.var
+
+    def forward_mean(self, k, x):
+        """F^0(k, x) = x + gamma_k f(x): mean of X_{k+1} given X_k = x."""
+        g = jnp.asarray(self.gammas)[k]
+        g = jnp.reshape(g, g.shape + (1,) * (x.ndim - jnp.ndim(g)))
+        return x + g * self.drift(x)
+
+    def marginal_coefficients(self) -> tuple[np.ndarray, np.ndarray]:
+        """Closed-form X_k | X_0 = A_k X_0 + (1 - A_k) mean + S_k Z for k = 0..N.
+
+        The chain is linear Gaussian: X_{k+1} = a_k X_k + (1 - a_k) mean + sqrt(2 g_k) Z with
+        a_k = 1 - g_k / var, so A_{k+1} = a_k A_k and S_{k+1}^2 = a_k^2 S_k^2 + 2 g_k.
+        """
+        n = self.num_steps
+        A = np.ones(n + 1, dtype=np.float64)
+        S2 = np.zeros(n + 1, dtype=np.float64)
+        for k in range(n):
+            a = 1.0 - float(self.gammas[k]) / self.var
+            A[k + 1] = a * A[k]
+            S2[k + 1] = a * a * S2[k] + 2.0 * float(self.gammas[k])
+        return A.astype(np.float32), np.sqrt(S2).astype(np.float32)
+
+    def sample_marginal(self, key, k, x0):
+        """Sample X_k given X_0 = x0 in closed form. ``k`` may be a per-sample int array."""
+        A, S = self.marginal_coefficients()
+        A = jnp.asarray(A)[k]
+        S = jnp.asarray(S)[k]
+        shape = (1,) * (x0.ndim - jnp.ndim(A))
+        A = jnp.reshape(A, A.shape + shape)
+        S = jnp.reshape(S, S.shape + shape)
+        z = jax.random.normal(key, x0.shape, x0.dtype)
+        return A * x0 + (1.0 - A) * self.mean + S * z
