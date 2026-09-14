@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -79,7 +80,7 @@ def main():
     grid = image_grid(np.asarray(images[:64]))
     save_png(os.path.join(args.outdir, "data.png"), grid)
 
-    @jax.jit
+    @eqx.filter_jit
     def _generate(b_net, xN, key):
         return ipf.generate(b_net, xN, gammas, key, last_step_noise=False)
 
