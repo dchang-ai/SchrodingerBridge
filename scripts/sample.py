@@ -55,8 +55,8 @@ def main():
         za, zb = jax.random.normal(k1, (2, 3, 32, 32))
         lam = jnp.linspace(0, 1, 8)
         xN = (1 - lam)[:, None, None, None] * za + lam[:, None, None, None] * zb
-        # fixed Gaussian noise along the chain for a deterministic embedding
-        x0 = ipf.generate(b_net, xN, gammas, k2, last_step_noise=False)
+        # the same Gaussian noise along the chain for every lambda -> deterministic embedding
+        x0 = ipf.generate(b_net, xN, gammas, k2, last_step_noise=False, shared_noise=True)
         save_png(out, image_grid(np.asarray(cifar_to_uint8(x0)), nrow=8))
     else:
         xN = jax.random.normal(k1, (args.n, 3, 32, 32))

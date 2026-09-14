@@ -61,6 +61,7 @@ def simulate(
     *,
     forward: bool,
     last_step_noise: bool = True,
+    shared_noise: bool = False,
 ) -> Cache:
     """Run the chain driven by ``mean_net`` for N steps and record training pairs.
 
@@ -69,7 +70,8 @@ def simulate(
 
     Returns a :class:`Cache` whose ``xs[i]`` is the state *after* step i, ``ks[i]`` its
     step index and ``targets[i] = M(k_in, X_in) - M(k_in, X_out)`` (Prop. 3 targets).
-    ``xs[-1]`` is the final state (X_N or X_0).
+    ``xs[-1]`` is the final state (X_N or X_0).  ``shared_noise`` uses the same Gaussian
+    noise for every element of the batch (deterministic latent embedding, Figure 13).
     """
     n = gammas.shape[0]
     if forward:
@@ -89,7 +91,8 @@ def simulate(
         k_in, k_out, sc, kk = inp
         kb = jnp.full((x.shape[0],), k_in, jnp.int32)
         mean_old = batched_mean(mean_net, kb, x)
-        x_new = mean_old + sc * jax.random.normal(kk, x.shape, x.dtype)
+        noise_shape = (1,) + x.shape[1:] if shared_noise else x.shape
+        x_new = mean_old + sc * jax.random.normal(kk, noise_shape, x.dtype)
         mean_new = batched_mean(mean_net, kb, x_new)
         return x_new, (x_new, mean_old - mean_new)
 
@@ -97,9 +100,9 @@ def simulate(
     return Cache(xs=xs, targets=targets, ks=ks_out)
 
 
-def generate(b_net: eqx.Module, x_prior: jax.Array, gammas: jax.Array, key, *, last_step_noise=False):
+def generate(b_net: eqx.Module, x_prior: jax.Array, gammas: jax.Array, key, *, last_step_noise=False, shared_noise=False):
     """Sample X_0 from the generative model: X_N ~ p_prior, then the backward chain."""
-    cache = simulate(b_net, x_prior, gammas, key, forward=False, last_step_noise=last_step_noise)
+    cache = simulate(b_net, x_prior, gammas, key, forward=False, last_step_noise=last_step_noise, shared_noise=shared_noise)
     return cache.xs[-1]
 
 
