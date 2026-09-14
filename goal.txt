@@ -1,0 +1,13 @@
+/goal
+
+I have included here a paper. I would like you to please implement Algorithm 1. Demonstrate this on some reasonably nontrivial dataset; let's say CIFAR-10. By the way
+I didn't read the paper so you have some liberty to decide what constitutes a decent implementation and demonstration.
+
+In the course of your work please commit frequently, with short commit messages: we will use the diffs to discover the content of the commit, rather than the
+commit messages.
+
+We are on a shared cluster. You will have to submit jobs with sbatch, and you will have to figure out also which directories and environments the nodes have access to.
+In fact, you will have to resolve this carefully at the start and should probably assign a subagent to do it while you read the paper and plan the implementation; it is
+easy for jobs to fail silently before you have ascertained how to use the GPUs. Also please be careful not to pwn the nodes by allocating all their memory or CPUs. 
+
+We're a jax shop so please use jax and equinox.

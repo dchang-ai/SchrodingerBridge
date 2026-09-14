@@ -1,0 +1,11 @@
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.venv/
+data/
+runs/
+cluster_probe/*.out
+cluster_probe/*.err
+slurm-*.out
+*.eqx
+*.npz
