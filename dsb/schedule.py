@@ -6,10 +6,12 @@ We work with a discrete chain X_0, ..., X_N.  ``gammas[k]`` (k = 0..N-1) is the
 step size of the transition k -> k+1, i.e. the paper's gamma_{k+1}.
 
 The reference dynamics (paper: f(x) = -alpha x) is the Euler–Maruyama
-discretisation of an Ornstein–Uhlenbeck process targeting the Gaussian prior
-N(mean, var I):
+discretisation of an Ornstein–Uhlenbeck process, f(x) = -alpha (x - mean):
 
-    X_{k+1} = X_k + gammas[k] * f(X_k) + sqrt(2 gammas[k]) Z,   f(x) = -(x - mean) / var.
+    X_{k+1} = X_k + gammas[k] * f(X_k) + sqrt(2 gammas[k]) Z.
+
+With alpha = 1/var this targets the Gaussian prior N(mean, var I); alpha = 0 is a
+Brownian motion.
 
 Because f is linear, the reference marginals X_k | X_0 are Gaussian and can be
 sampled in closed form (Appendix I, Technique 2).
@@ -42,11 +44,15 @@ def constant_gammas(num_steps: int, gamma: float) -> np.ndarray:
 
 @dataclasses.dataclass(frozen=True)
 class OUReference:
-    """Reference forward dynamics f(x) = -(x - mean)/var (OU targeting the prior)."""
+    """Reference forward dynamics f(x) = -alpha (x - mean).
+
+    alpha = 1/var gives an OU process targeting N(mean, var I) (Ho et al. style);
+    alpha = 0 gives a Brownian motion (Song & Ermon style).
+    """
 
     gammas: np.ndarray  # (N,)
+    alpha: float = 1.0
     mean: float = 0.0
-    var: float = 1.0
 
     @property
     def num_steps(self) -> int:
@@ -57,7 +63,7 @@ class OUReference:
         return float(np.sum(self.gammas))
 
     def drift(self, x):
-        return -(x - self.mean) / self.var
+        return -self.alpha * (x - self.mean)
 
     def forward_mean(self, k, x):
         """F^0(k, x) = x + gamma_k f(x): mean of X_{k+1} given X_k = x."""
@@ -69,13 +75,13 @@ class OUReference:
         """Closed-form X_k | X_0 = A_k X_0 + (1 - A_k) mean + S_k Z for k = 0..N.
 
         The chain is linear Gaussian: X_{k+1} = a_k X_k + (1 - a_k) mean + sqrt(2 g_k) Z with
-        a_k = 1 - g_k / var, so A_{k+1} = a_k A_k and S_{k+1}^2 = a_k^2 S_k^2 + 2 g_k.
+        a_k = 1 - alpha g_k, so A_{k+1} = a_k A_k and S_{k+1}^2 = a_k^2 S_k^2 + 2 g_k.
         """
         n = self.num_steps
         A = np.ones(n + 1, dtype=np.float64)
         S2 = np.zeros(n + 1, dtype=np.float64)
         for k in range(n):
-            a = 1.0 - float(self.gammas[k]) / self.var
+            a = 1.0 - self.alpha * float(self.gammas[k])
             A[k + 1] = a * A[k]
             S2[k + 1] = a * a * S2[k] + 2.0 * float(self.gammas[k])
         return A.astype(np.float32), np.sqrt(S2).astype(np.float32)
