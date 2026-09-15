@@ -36,7 +36,7 @@ export PYTHONUNBUFFERED=1
 source "$VENV/bin/activate"
 cd "$PROJ"
 echo "== job $SLURM_JOB_ID on $(hostname) | gpus=$CUDA_VISIBLE_DEVICES | cpus=$SLURM_CPUS_PER_TASK | $(date)"
-nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader | head -1
+nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader --id=0 || true   # (no pipe to head: SIGPIPE + pipefail killed a job)
 echo "== running: $*"
 "$@"
 echo "== finished $(date)"
