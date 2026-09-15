@@ -9,3 +9,7 @@ cluster_probe/*.err
 slurm-*.out
 *.eqx
 *.npz
+.venv-fid/
+logs/*.out
+logs/*.err
+cluster_probe/*.log

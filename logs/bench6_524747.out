@@ -1,0 +1,78 @@
+== job 524747 on lambda-hyperplane0 | gpus=2,3,4,5,6,7 | cpus=24 | Tue Sep 15 01:36:56 AM UTC 2026
+NVIDIA A100-SXM4-80GB, 570.211.01, 81920 MiB, 8021 MiB
+== running: env XLA_PYTHON_CLIENT_MEM_FRACTION=0.85 python scripts/bench_parallel.py --ndev-list 1,2,4,6 --configs weak,strong,bf16,big,unfused --time-budget 1400 --steps 40
+== host lambda-hyperplane0 | devices: ['cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5']
+== nvidia-smi topo -m
+[4mGPU0	GPU1	GPU2	GPU3	GPU4	GPU5	GPU6	GPU7	CPU Affinity	NUMA Affinity	GPU NUMA ID[0m
+GPU0	 X 	NV12	NV12	NV12	NV12	NV12	NV12	NV12	0-63,128-191	0		N/A
+GPU1	NV12	 X 	NV12	NV12	NV12	NV12	NV12	NV12	0-63,128-191	0		N/A
+GPU2	NV12	NV12	 X 	NV12	NV12	NV12	NV12	NV12	0-63,128-191	0		N/A
+GPU3	NV12	NV12	NV12	 X 	NV12	NV12	NV12	NV12	0-63,128-191	0		N/A
+GPU4	NV12	NV12	NV12	NV12	 X 	NV12	NV12	NV12	64-127,192-255	1		N/A
+GPU5	NV12	NV12	NV12	NV12	NV12	 X 	NV12	NV12	64-127,192-255	1		N/A
+GPU6	NV12	NV12	NV12	NV12	NV12	NV12	 X 	NV12	64-127,192-255	1		N/A
+GPU7	NV12	NV12	NV12	NV12	NV12	NV12	NV12	 X 	64-127,192-255	1		N/A
+
+Legend:
+
+  X    = Self
+  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)
+  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node
+  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)
+  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)
+  PIX  = Connection traversing at most a single PCIe bridge
+  NV#  = Connection traversing a bonded set of # NVLinks
+== /sys/class/infiniband:  | ibstat: /bin/sh: 1: ibstat: not found
+== ip -br link:
+lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> 
+enp45s0f0        DOWN           7c:c2:55:25:cc:18 <BROADCAST,MULTICAST> 
+enp45s0f1        UP             7c:c2:55:25:cc:19 <BROADCAST,MULTICAST,UP,LOWER_UP> 
+enp45s0f2        DOWN           7c:c2:55:25:cc:1a <BROADCAST,MULTICAST> 
+enp45s0f3        DOWN           7c:c2:55:25:cc:1b <BROADCAST,MULTICAST> 
+usb0             DOWN           ea:35:ad:56:9b:f7 <BROADCAST,MULTICAST> 
+tailscale0       UNKNOWN        <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP>
+== ethtool speeds: enp45s0f0= enp45s0f1=10000 enp45s0f2= enp45s0f3= usb0=
+== nccl: 2.31.2
+== ndev list [1, 2, 4, 6] (available 6), configs ['weak', 'strong', 'bf16', 'big', 'unfused']
+== config weak ndev=1 ch=64 B=128 M=512 (5s elapsed)
+[bench] {"label": "weak", "ndev": 1, "ch": 64, "params_M": 8.95, "global_batch": 128, "per_device_batch": 128, "cache_size": 512, "dtype": "f32", "step_ms": 42.61, "it_per_s": 23.47, "samples_per_s": 3004, "refresh_s": 4.471, "eff_it_per_s": 18.59, "eff_samples_per_s": 2380, "unfused_step_ms": null, "compile_s": 192.5, "peak_gb_dev0": 4.67, "loss": 0.05784395709633827}
+== config weak ndev=2 ch=64 B=256 M=1024 (226s elapsed)
+[bench] {"label": "weak", "ndev": 2, "ch": 64, "params_M": 8.95, "global_batch": 256, "per_device_batch": 128, "cache_size": 1024, "dtype": "f32", "step_ms": 42.83, "it_per_s": 23.35, "samples_per_s": 5976, "refresh_s": 4.371, "eff_it_per_s": 18.6, "eff_samples_per_s": 4762, "unfused_step_ms": null, "compile_s": 43.9, "peak_gb_dev0": 4.67, "loss": 0.05937383696436882}
+== config weak ndev=4 ch=64 B=512 M=2048 (285s elapsed)
+[bench] {"label": "weak", "ndev": 4, "ch": 64, "params_M": 8.95, "global_batch": 512, "per_device_batch": 128, "cache_size": 2048, "dtype": "f32", "step_ms": 54.95, "it_per_s": 18.2, "samples_per_s": 9317, "refresh_s": 4.375, "eff_it_per_s": 15.18, "eff_samples_per_s": 7770, "unfused_step_ms": null, "compile_s": 44.4, "peak_gb_dev0": 4.67, "loss": 0.0651010125875473}
+== config weak ndev=6 ch=64 B=768 M=3072 (346s elapsed)
+[bench] {"label": "weak", "ndev": 6, "ch": 64, "params_M": 8.95, "global_batch": 768, "per_device_batch": 128, "cache_size": 3072, "dtype": "f32", "step_ms": 68.31, "it_per_s": 14.64, "samples_per_s": 11242, "refresh_s": 4.389, "eff_it_per_s": 12.61, "eff_samples_per_s": 9686, "unfused_step_ms": null, "compile_s": 45.9, "peak_gb_dev0": 4.67, "loss": 0.06576508283615112}
+== config strong ndev=1 ch=64 B=512 M=512 (409s elapsed)
+[bench] {"label": "strong", "ndev": 1, "ch": 64, "params_M": 8.95, "global_batch": 512, "per_device_batch": 512, "cache_size": 512, "dtype": "f32", "step_ms": 146.23, "it_per_s": 6.84, "samples_per_s": 3501, "refresh_s": 4.362, "eff_it_per_s": 6.36, "eff_samples_per_s": 3258, "unfused_step_ms": null, "compile_s": 123.2, "peak_gb_dev0": 14.77, "loss": 0.06291158497333527}
+== config strong ndev=2 ch=64 B=512 M=512 (552s elapsed)
+[bench] {"label": "strong", "ndev": 2, "ch": 64, "params_M": 8.95, "global_batch": 512, "per_device_batch": 256, "cache_size": 512, "dtype": "f32", "step_ms": 77.47, "it_per_s": 12.91, "samples_per_s": 6609, "refresh_s": 2.32, "eff_it_per_s": 12.01, "eff_samples_per_s": 6149, "unfused_step_ms": null, "compile_s": 155.6, "peak_gb_dev0": 14.77, "loss": 0.060565680265426636}
+== config strong ndev=4 ch=64 B=512 M=512 (718s elapsed)
+[bench] {"label": "strong", "ndev": 4, "ch": 64, "params_M": 8.95, "global_batch": 512, "per_device_batch": 128, "cache_size": 512, "dtype": "f32", "step_ms": 51.47, "it_per_s": 19.43, "samples_per_s": 9947, "refresh_s": 1.308, "eff_it_per_s": 18.27, "eff_samples_per_s": 9352, "unfused_step_ms": null, "compile_s": 41.2, "peak_gb_dev0": 14.77, "loss": 0.06559652835130692}
+== config bf16 ndev=1 ch=64 B=128 M=512 (767s elapsed)
+[bench] {"label": "bf16", "ndev": 1, "ch": 64, "params_M": 8.95, "global_batch": 128, "per_device_batch": 128, "cache_size": 512, "dtype": "bf16", "step_ms": 33.77, "it_per_s": 29.61, "samples_per_s": 3790, "refresh_s": 1.987, "eff_it_per_s": 25.81, "eff_samples_per_s": 3304, "unfused_step_ms": null, "compile_s": 174.6, "peak_gb_dev0": 14.77, "loss": 0.05784513056278229}
+== config bf16 ndev=6 ch=64 B=768 M=3072 (949s elapsed)
+[bench] {"label": "bf16", "ndev": 6, "ch": 64, "params_M": 8.95, "global_batch": 768, "per_device_batch": 128, "cache_size": 3072, "dtype": "bf16", "step_ms": 73.89, "it_per_s": 13.53, "samples_per_s": 10394, "refresh_s": 1.997, "eff_it_per_s": 12.68, "eff_samples_per_s": 9736, "unfused_step_ms": null, "compile_s": 49.5, "peak_gb_dev0": 14.77, "loss": 0.06531742960214615}
+== config big ndev=6 ch=128 B=768 M=3072 (1009s elapsed)
+[bench] {"label": "big", "ndev": 6, "ch": 128, "params_M": 35.75, "global_batch": 768, "per_device_batch": 128, "cache_size": 3072, "dtype": "f32", "step_ms": 90.79, "it_per_s": 11.02, "samples_per_s": 8460, "refresh_s": 9.599, "eff_it_per_s": 8.71, "eff_samples_per_s": 6691, "unfused_step_ms": null, "compile_s": 196.6, "peak_gb_dev0": 14.77, "loss": 0.06461115181446075}
+== config big-bf16 ndev=6 ch=128 B=768 M=3072 (1249s elapsed)
+[bench] {"label": "big-bf16", "ndev": 6, "ch": 128, "params_M": 35.75, "global_batch": 768, "per_device_batch": 128, "cache_size": 3072, "dtype": "bf16", "step_ms": 84.0, "it_per_s": 11.9, "samples_per_s": 9143, "refresh_s": 4.452, "eff_it_per_s": 10.51, "eff_samples_per_s": 8073, "unfused_step_ms": null, "compile_s": 171.7, "peak_gb_dev0": 14.77, "loss": 0.06458967924118042}
+[bench] time budget exhausted (1438s), skipping big ndev=1
+[bench] time budget exhausted (1438s), skipping unfused ndev=1
+[bench] time budget exhausted (1438s), skipping unfused ndev=6
+
+== summary (it/s = fused sample+step; eff = incl. one cache refresh per 400 steps)
+config    ndev   ch dtype     B     M  step ms    it/s  samples/s refresh s eff it/s eff smp/s peakGB
+weak         1   64   f32   128   512    42.61   23.47       3004      4.47    18.59      2380   4.67
+weak         2   64   f32   256  1024    42.83   23.35       5976      4.37    18.60      4762   4.67
+weak         4   64   f32   512  2048    54.95   18.20       9317      4.38    15.18      7770   4.67
+weak         6   64   f32   768  3072    68.31   14.64      11242      4.39    12.61      9686   4.67
+strong       1   64   f32   512   512   146.23    6.84       3501      4.36     6.36      3258  14.77
+strong       2   64   f32   512   512    77.47   12.91       6609      2.32    12.01      6149  14.77
+strong       4   64   f32   512   512    51.47   19.43       9947      1.31    18.27      9352  14.77
+bf16         1   64  bf16   128   512    33.77   29.61       3790      1.99    25.81      3304  14.77
+bf16         6   64  bf16   768  3072    73.89   13.53      10394      2.00    12.68      9736  14.77
+big          6  128   f32   768  3072    90.79   11.02       8460      9.60     8.71      6691  14.77
+big-bf16     6  128  bf16   768  3072    84.00   11.90       9143      4.45    10.51      8073  14.77
+[bench] wrote runs/bench_parallel_524747.json
+[bench] total 1438s
+== finished Tue Sep 15 02:01:13 AM UTC 2026

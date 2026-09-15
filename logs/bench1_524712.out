@@ -1,0 +1,30 @@
+== job 524712 on lambda-hyperplane | gpus=1 | cpus=8 | Tue Sep 15 01:28:39 AM UTC 2026
+NVIDIA A100-SXM4-80GB, 570.195.03, 81920 MiB, 8005 MiB
+== running: bash -c python scripts/bench_single.py && XLA_FLAGS="--xla_gpu_enable_latency_hiding_scheduler=true --xla_gpu_autotune_level=4" python scripts/bench_single.py --quick
+devices: [CudaDevice(id=0)] | jax 0.11.1 | XLA_FLAGS= 
+UNet ch=64: 8.95M params, N=50
+[bench] forward vmap(unet) B=128                             13.68 ms  samples_per_s=9359 tflops=1.829 gflop_per_call=25.02
+[bench] train_step f32(default/TF32) B=128                   61.26 ms  it_per_s=16.33 samples_per_s=2090 tflops=1.269 peak_gb=4.04
+[bench] train_step f32(default/TF32) B=256                   96.34 ms  it_per_s=10.38 samples_per_s=2657 tflops=1.164 peak_gb=7.52
+[bench] train_step f32(default/TF32) B=512                  170.18 ms  it_per_s=5.876 samples_per_s=3009 tflops=1.827 peak_gb=14.39
+[bench] train_step f32(highest) B=128                       106.87 ms  it_per_s=9.357 samples_per_s=1198
+[bench] train_step bf16-mixed B=128                          26.12 ms  it_per_s=38.29 samples_per_s=4901 tflops=2.976 peak_gb=14.39
+[bench] train_step bf16-mixed B=256                          45.38 ms  it_per_s=22.04 samples_per_s=5641 tflops=2.472 peak_gb=14.39
+[bench] train_step bf16-mixed B=512                          79.66 ms  it_per_s=12.55 samples_per_s=6428 tflops=3.902 peak_gb=14.39
+[bench] train_step f32 via shard_map(1 dev) B=128            42.58 ms  it_per_s=23.49
+[bench] simulate backward M=512 N=50 f32                   4341.21 ms  sample_evals_per_s=1.179e+04 per_400_steps_overhead_s=4.341 peak_gb=14.39
+[bench] simulate forward(data) M=512 N=50 f32              4341.08 ms  sample_evals_per_s=1.179e+04
+[bench] simulate backward M=512 N=50 bf16                  1998.36 ms  sample_evals_per_s=2.562e+04
+[bench] simulate backward M=1024 N=50 f32                  8392.30 ms  sample_evals_per_s=1.22e+04 peak_gb=14.39
+[bench] simulate backward M=2048 N=50 f32                 16409.45 ms  sample_evals_per_s=1.248e+04 peak_gb=16.23
+[bench] run_dsb loop (split+sample_cache+train_step) B=128     65.39 ms  it_per_s=15.29
+[bench] fused sample+train_step loop B=128                   42.51 ms  it_per_s=23.52
+[bench] dispatch: fold_in+sample_cache (per call, async)      3.19 ms  exec_incl_ms=3.192
+[bench] dispatch: jax.random.split(key, 4) (per call)         0.53 ms  
+[bench] generate 500 samples (N=50)                        2161.80 ms  per_5000_samples_s=21.62
+[bench] np.savez_compressed 5000 uint8 samples             1886.08 ms  mb=9.564
+[bench] peak device memory 16.23 GB
+[bench] wrote runs/bench_single_524712.json
+devices: [CudaDevice(id=0)] | jax 0.11.1 | XLA_FLAGS= --xla_gpu_enable_latency_hiding_scheduler=true --xla_gpu_autotune_level=4
+UNet ch=64: 8.95M params, N=50
+[bench] train_step f32(default/TF32) B=128                   62.15 ms  it_per_s=16.09 samples_per_s=2060 tflops=1.078 peak_gb=4.03
