@@ -21,7 +21,7 @@ import numpy as np
 from dsb import ipf
 from dsb.data import cifar_to_uint8, load_cifar10, sample_cifar_batch
 from dsb.networks import UNet, count_params
-from dsb.train import DSBConfig, run_dsb
+from dsb.train import DSBConfig, run_dsb, run_dsb_parallel
 from dsb.utils import Logger, image_grid, save_png
 
 
@@ -41,12 +41,15 @@ def main():
     p.add_argument("--cache-refresh", type=int, default=400)
     p.add_argument("--ch", type=int, default=64)
     p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--warmup", type=int, default=0, help="linear lr warm-up steps (restarts with the optimizer at every half-step)")
     p.add_argument("--loss-weighting", default="none", choices=["none", "gamma"])
     p.add_argument("--scaled-output", action="store_true", help="increment = sqrt(2 gamma_k) * net(k, x)")
     p.add_argument("--dropout", type=float, default=0.0)
     p.add_argument("--eval-samples", type=int, default=64)
     p.add_argument("--fid-samples", type=int, default=0, help="if > 0, dump this many generated samples per DSB iteration as .npz")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--single", action="store_true", help="use the simple single-device driver instead of the data-parallel one")
+    p.add_argument("--bf16", action="store_true", help="bfloat16 network evaluation (master weights, loss and chain stay float32)")
     args = p.parse_args()
 
     cfg = DSBConfig(
@@ -54,7 +57,7 @@ def main():
         prior_mean=0.0, prior_std=1.0,
         num_dsb_iters=args.iters, train_steps=args.steps, first_train_steps=args.first_steps,
         batch_size=args.batch, cache_size=args.cache_size, cache_refresh=args.cache_refresh,
-        lr=args.lr, warmup=0, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting, scaled_output=args.scaled_output,
+        lr=args.lr, warmup=args.warmup, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting, scaled_output=args.scaled_output,
         use_dropout=args.dropout > 0, ref_residual=True, seed=args.seed, log_every=100,
     )
     ref = cfg.reference()
@@ -119,8 +122,12 @@ def main():
             fh.write(json.dumps(dict(n=n, **m)) + "\n")
         return m
 
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=images,
-            outdir=args.outdir, eval_fn=eval_fn, logger=logger)
+    common = dict(make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=images,
+                  outdir=args.outdir, eval_fn=eval_fn, logger=logger)
+    if args.single:
+        run_dsb(cfg, **common)
+    else:
+        run_dsb_parallel(cfg, compute_dtype=jnp.bfloat16 if args.bf16 else None, **common)
 
 
 if __name__ == "__main__":

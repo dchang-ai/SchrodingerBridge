@@ -42,6 +42,7 @@ from typing import Callable, Sequence
 
 import equinox as eqx
 import jax
+import jax.flatten_util
 import jax.numpy as jnp
 import numpy as np
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
@@ -147,6 +148,8 @@ def make_train_step(
     weight_table=None,
     compute_dtype=None,
     fused_cache_sampling: int | None = None,
+    ravel_grads: bool = True,
+    steps_per_call: int = 1,
 ):
     """Data-parallel version of :func:`dsb.ipf.make_train_step`.
 
@@ -158,6 +161,12 @@ def make_train_step(
     paper).  With ``fused_cache_sampling=B`` the signature becomes
     ``step(state, cache, key)``: each device draws its ``B/ndev`` pairs from its cache
     shard inside the same jitted call (one dispatch per training step instead of two).
+    ``ravel_grads=True`` reduces all gradients in a single all-reduce of one flat vector;
+    ``False`` leaves one all-reduce per parameter leaf to XLA's combiner/scheduler.
+    ``steps_per_call=K`` (fused sampling only) runs K consecutive training steps, each on a
+    fresh batch drawn from the cache, inside one jitted call (``lax.scan``) and returns the
+    K losses as a vector: the host-side cost of dispatching the ~1200-leaf train state
+    (several ms per call, see scripts/bench_collective.py) is then paid once per K steps.
     """
     d = dp.axis
 
@@ -168,8 +177,14 @@ def make_train_step(
 
     def update(state: TrainState, ks, xs, targets, key):
         loss, grads = jax.value_and_grad(loss_fn)(state.params, ks, xs, targets, key)
-        grads = jax.lax.pmean(grads, d)  # all-reduce: identical on every device afterwards
-        loss = jax.lax.pmean(loss, d)
+        if ravel_grads:
+            # One all-reduce per step: ravel the ~300 gradient leaves (+ the loss) into a
+            # single vector and average it over the devices (identical on every device).
+            flat, unravel = jax.flatten_util.ravel_pytree(grads)
+            flat = jax.lax.pmean(jnp.concatenate([flat, loss[None].astype(flat.dtype)]), d)
+            grads, loss = unravel(flat[:-1]), flat[-1]
+        else:
+            grads, loss = jax.lax.pmean((grads, loss), d)
         updates, opt_state = optimizer.update(grads, state.opt_state, state.params)
         params = eqx.apply_updates(state.params, updates)
         decay = jnp.minimum(ema_decay, (1.0 + state.step) / (10.0 + state.step))
@@ -185,14 +200,29 @@ def make_train_step(
     else:
         b_local = dp.local(fused_cache_sampling)
 
-        def local_step(state, cache, key):
-            k1, k2 = jax.random.split(dp.local_key(key))
+        def one_step(state, cache, key):
+            k1, k2 = jax.random.split(key)
             ks, xs, targets = ipf.sample_cache(cache, k1, b_local)
             return update(state, ks, xs, targets, k2)
 
+        if steps_per_call == 1:
+
+            def local_step(state, cache, key):
+                return one_step(state, cache, dp.local_key(key))
+
+        else:
+
+            def local_step(state, cache, key):
+                keys = jax.random.split(dp.local_key(key), steps_per_call)
+                return jax.lax.scan(lambda st, k: one_step(st, cache, k), state, keys)
+
         in_specs = (P(), dp.cache_specs, P())
 
-    return jax.jit(dp.shard_map(local_step, in_specs=in_specs, out_specs=(P(), P())))
+    # check_vma=False: with the vma check on, jax.grad of the *invariant* params inside the
+    # body inserts an implicit psum (transpose of the broadcast) so the local gradients would
+    # already be summed over devices; we keep the classic pmap semantics instead, where the
+    # body sees purely local gradients and the reduction is the explicit pmean above.
+    return jax.jit(dp.shard_map(local_step, in_specs=in_specs, out_specs=(P(), P()), check_vma=False))
 
 
 # --------------------------------------------------------------------------- cache
