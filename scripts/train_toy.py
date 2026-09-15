@@ -54,15 +54,15 @@ def main():
         num_steps=args.num_steps, gamma_schedule="constant", gamma=args.gamma,
         prior_mean=data_mean, prior_std=prior_std,        # OU reference with alpha = 1/sigma^2
         num_dsb_iters=args.iters, train_steps=args.steps, batch_size=args.batch,
-        cache_size=10_000, cache_refresh=1000, lr=1e-4, ema_decay=0.999, seed=args.seed, log_every=1000,
+        cache_size=10_000, cache_refresh=1000, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=1000,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
     logger = Logger(os.path.join(outdir, "log.jsonl"))
     print(f"dataset={args.dataset} N={ref.num_steps} T={ref.horizon:.3f} prior=N({data_mean:.3f},{prior_std:.3f}^2)")
 
-    def sample_data(key, n):
-        return sample_pool(key, pool, n)
+    def sample_data(key, n, data):
+        return sample_pool(key, data, n)
 
     def sample_prior(key, n):
         return cfg.prior_mean + cfg.prior_std * jax.random.normal(key, (n, 2))
@@ -79,7 +79,7 @@ def main():
         n_eval = 5000
         xN = sample_prior(k1, n_eval)
         bwd = ipf.simulate(b_net, xN, gammas, k2, forward=False, last_step_noise=False)  # xs[i] = X_{N-1-i}
-        x0_data = sample_data(k3, n_eval)
+        x0_data = sample_data(k3, n_eval, pool)
         fwd = ipf.simulate(f_net, x0_data, gammas, k4, forward=True)                    # xs[i] = X_{i+1}
         gen = np.asarray(bwd.xs[-1])
         ed = energy_distance(gen[:2000], np.asarray(x0_data[:2000]))
@@ -111,7 +111,8 @@ def main():
             fh.write(json.dumps(dict(n=n, **m)) + "\n")
         return m
 
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, outdir=outdir, eval_fn=eval_fn, logger=logger)
+    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=pool,
+            outdir=outdir, eval_fn=eval_fn, logger=logger)
 
 
 if __name__ == "__main__":

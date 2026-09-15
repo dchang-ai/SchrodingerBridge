@@ -39,13 +39,13 @@ def main():
         num_steps=20, gamma_schedule="constant", gamma=1.0 / 40.0,  # T = 1/2 -> unit transition variance
         prior_mean=-a, prior_std=1.0, ref_alpha=0.0,                # Brownian reference
         num_dsb_iters=args.iters, train_steps=args.steps, batch_size=128,
-        cache_size=2000, cache_refresh=500, lr=1e-4, ema_decay=0.999, seed=args.seed, log_every=500,
+        cache_size=2000, cache_refresh=500, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=500,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
     logger = Logger(os.path.join(args.outdir, "log.jsonl"))
 
-    def sample_data(key, n):
+    def sample_data(key, n, data):
         return a + jax.random.normal(key, (n, d))
 
     def sample_prior(key, n):
@@ -70,7 +70,8 @@ def main():
         return m
 
     print(f"target: mean={a} var=1 cov={BETA:.4f}; N={ref.num_steps} T={ref.horizon:.3f}")
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, outdir=args.outdir, eval_fn=eval_fn, logger=logger)
+    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=jnp.zeros(()),
+            outdir=args.outdir, eval_fn=eval_fn, logger=logger)
 
 
 if __name__ == "__main__":

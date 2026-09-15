@@ -18,7 +18,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from . import ipf
-from .networks import ScaledIncrement
+from .networks import ReferenceResidual, ScaledIncrement
 from .schedule import OUReference, constant_gammas, symmetric_gammas
 
 
@@ -49,6 +49,7 @@ class DSBConfig:
     reset_optimizer: bool = True
     loss_weighting: str = "none"        # "none" (paper) or "gamma" (weight 1/(2 gamma_k))
     scaled_output: bool = False         # increment = sqrt(2 gamma_k) * net(k, x) (epsilon-style parametrisation)
+    ref_residual: bool = False          # forward net = reference drift + network (untrained net == F^0)
     use_dropout: bool = False
     # misc
     seed: int = 0
@@ -100,8 +101,9 @@ def run_dsb(
     cfg: DSBConfig,
     *,
     make_net: Callable[[jax.Array], eqx.Module],
-    sample_data: Callable[[jax.Array, int], jax.Array],
+    sample_data: Callable[[jax.Array, int, jax.Array], jax.Array],
     sample_prior: Callable[[jax.Array, int], jax.Array],
+    data: jax.Array,
     outdir: str,
     eval_fn: Callable | None = None,
     logger=None,
@@ -122,6 +124,8 @@ def run_dsb(
     if cfg.scaled_output:
         sf, sb = output_scales(ref)
         f_net, b_net = ScaledIncrement(f_net, sf), ScaledIncrement(b_net, sb)
+    if cfg.ref_residual:
+        f_net = ReferenceResidual(f_net, ref.gammas, ref.alpha, ref.mean)
     _, f_static = eqx.partition(f_net, eqx.is_array)
     _, b_static = eqx.partition(b_net, eqx.is_array)
     optimizer = ipf.make_optimizer(cfg.lr, cfg.grad_clip, cfg.warmup)
@@ -160,16 +164,18 @@ def run_dsb(
             json.dump({"n": n, "phase": phase, "file": fname}, fh)
 
     # ---- jitted pieces ------------------------------------------------------------
+    # the dataset is passed as an argument (not closed over) so that it is not baked into
+    # the compiled executables as a constant
     @eqx.filter_jit
-    def reference_batch(key):
+    def reference_batch(key, data):
         k1, k2 = jax.random.split(key)
-        x0 = sample_data(k1, cfg.batch_size)
+        x0 = sample_data(k1, cfg.batch_size, data)
         return ipf.reference_pairs(ref, k2, x0)
 
     @eqx.filter_jit
-    def forward_cache(f_ema, key):
+    def forward_cache(f_ema, key, data):
         k1, k2 = jax.random.split(key)
-        x0 = sample_data(k1, cfg.cache_size)
+        x0 = sample_data(k1, cfg.cache_size, data)
         return ipf.simulate(eqx.combine(f_ema, f_static), x0, gammas, k2, forward=True)
 
     @eqx.filter_jit
@@ -188,16 +194,17 @@ def run_dsb(
         # ---------------- backward half-step: learn B^n from forward trajectories of F^n
         if not (n == start_n and start_phase == "forward"):
             steps = cfg.first_train_steps if (n == 0 and cfg.first_train_steps) else cfg.train_steps
+            b_state = b_state._replace(params=b_state.ema_params)  # warm start from the teacher
             if cfg.reset_optimizer:
-                b_state = b_state._replace(opt_state=optimizer.init(b_state.params), step=jnp.zeros((), jnp.int32))
+                b_state = b_state._replace(opt_state=optimizer.init(b_state.params))
             cache, t0, losses = None, time.time(), []
             for it in range(steps):
                 key, k1, k2, k3 = jax.random.split(key, 4)
                 if n == 0:
-                    ks, xs, tg = reference_batch(k1)  # Technique 2: closed-form pairs
+                    ks, xs, tg = reference_batch(k1, data)  # Technique 2: closed-form pairs
                 else:
                     if it % cfg.cache_refresh == 0:
-                        cache = forward_cache(f_state.ema_params, k1)
+                        cache = forward_cache(f_state.ema_params, k1, data)
                     ks, xs, tg = sample_cache(cache, k2, cfg.batch_size)
                 b_state, loss = train_step_b(b_state, ks, xs, tg, weights_for(wb, ks), k3)
                 losses.append(loss)
@@ -213,8 +220,9 @@ def run_dsb(
                     log(event="eval", n=n, **metrics)
 
         # ---------------- forward half-step: learn F^{n+1} from backward trajectories of B^n
+        f_state = f_state._replace(params=f_state.ema_params)  # warm start from the teacher
         if cfg.reset_optimizer:
-            f_state = f_state._replace(opt_state=optimizer.init(f_state.params), step=jnp.zeros((), jnp.int32))
+            f_state = f_state._replace(opt_state=optimizer.init(f_state.params))
         cache, t0, losses = None, time.time(), []
         for it in range(cfg.train_steps):
             key, k1, k2, k3 = jax.random.split(key, 4)

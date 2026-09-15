@@ -101,3 +101,24 @@ def test_shared_noise():
     ref = OUReference(symmetric_gammas(4), alpha=1.0)
     c = ipf.simulate(RefNet(ref), jnp.zeros((3, 2)), jnp.asarray(ref.gammas), jax.random.PRNGKey(0), forward=False, shared_noise=True)
     assert jnp.allclose(c.xs[:, 0], c.xs[:, 1])
+
+
+def test_reference_residual_untrained_equals_reference():
+    """With the reference drift as a fixed residual, a zero-output network is exactly F^0."""
+    from dsb.networks import ReferenceResidual
+
+    ref = OUReference(symmetric_gammas(10), alpha=0.7, mean=0.2)
+
+    class Zero(eqx.Module):
+        def __call__(self, k, x):
+            return jnp.zeros_like(x)
+
+    net = ReferenceResidual(Zero(), ref.gammas, ref.alpha, ref.mean)
+    x = jnp.linspace(-2, 2, 6)[:, None]
+    k = jnp.array([0, 3, 5, 7, 9, 2])
+    assert jnp.allclose(ipf.batched_mean(net, k, x), ref.forward_mean(k, x), atol=1e-6)
+
+
+def test_gamma_max_reached():
+    g = symmetric_gammas(50, 1e-5, 1e-1)
+    assert np.isclose(g.max(), 1e-1) and g[0] == np.float32(1e-5) and np.allclose(g, g[::-1])

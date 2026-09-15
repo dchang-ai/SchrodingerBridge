@@ -54,7 +54,7 @@ def main():
         num_dsb_iters=args.iters, train_steps=args.steps, first_train_steps=args.first_steps,
         batch_size=args.batch, cache_size=args.cache_size, cache_refresh=args.cache_refresh,
         lr=args.lr, warmup=0, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting, scaled_output=args.scaled_output,
-        use_dropout=args.dropout > 0, seed=args.seed, log_every=100,
+        use_dropout=args.dropout > 0, ref_residual=True, seed=args.seed, log_every=100,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
@@ -68,8 +68,8 @@ def main():
     images = jnp.asarray(images)  # uint8 on device (150 MB)
     print("cifar10 train:", images.shape, flush=True)
 
-    def sample_data(key, n):
-        return sample_cifar_batch(key, images, n, flip=True)
+    def sample_data(key, n, data):
+        return sample_cifar_batch(key, data, n, flip=True)
 
     def sample_prior(key, n):
         return jax.random.normal(key, (n, 3, 32, 32))
@@ -98,7 +98,7 @@ def main():
         rows = [np.asarray(cifar_to_uint8(xN[:8] if k == N else traj.xs[N - 1 - k][:8])) for k in ks]
         save_png(os.path.join(args.outdir, f"trajectory_iter{n:03d}.png"), image_grid(np.concatenate(rows), nrow=8))
         # forward chain from data (does F^n reach the prior?)
-        x0d = sample_data(k3, 512)
+        x0d = sample_data(k3, 512, images)
         fwd = ipf.simulate(f_net, x0d, gammas, k4, forward=True)
         xf = np.asarray(fwd.xs[-1])
         rows = [np.asarray(cifar_to_uint8(x0d[:8] if k == 0 else fwd.xs[k - 1][:8])) for k in [0, N // 4, N // 2, 3 * N // 4, N]]
@@ -118,7 +118,8 @@ def main():
             fh.write(json.dumps(dict(n=n, **m)) + "\n")
         return m
 
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, outdir=args.outdir, eval_fn=eval_fn, logger=logger)
+    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=images,
+            outdir=args.outdir, eval_fn=eval_fn, logger=logger)
 
 
 if __name__ == "__main__":

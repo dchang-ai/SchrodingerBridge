@@ -308,5 +308,26 @@ class ScaledIncrement(eqx.Module):
         return jnp.asarray(self.scales, dtype=x.dtype)[k] * self.net(k, x, **kwargs)
 
 
+class ReferenceResidual(eqx.Module):
+    """Forward mean map F(k, x) = x + gamma_k f(x) + net(k, x) with the reference drift
+    f(x) = -alpha (x - mean) as a fixed residual, so that the untrained (zero-output) network
+    is exactly the reference dynamics F^0 of Algorithm 1 (f_{alpha^0} = f, Technique 5 at n=0)."""
+
+    net: eqx.Module
+    gammas: tuple = eqx.field(static=True)
+    alpha: float = eqx.field(static=True)
+    mean: float = eqx.field(static=True)
+
+    def __init__(self, net: eqx.Module, gammas, alpha: float, mean: float):
+        self.net = net
+        self.gammas = tuple(float(g) for g in gammas)
+        self.alpha = float(alpha)
+        self.mean = float(mean)
+
+    def __call__(self, k, x, **kwargs):
+        g = jnp.asarray(self.gammas, dtype=x.dtype)[k]
+        return -g * self.alpha * (x - self.mean) + self.net(k, x, **kwargs)
+
+
 def count_params(model: eqx.Module) -> int:
     return sum(x.size for x in jax.tree_util.tree_leaves(eqx.filter(model, eqx.is_array)))

@@ -18,7 +18,7 @@ import numpy as np
 
 from dsb import ipf
 from dsb.data import cifar_to_uint8
-from dsb.networks import ScaledIncrement, UNet
+from dsb.networks import ReferenceResidual, ScaledIncrement, UNet
 from dsb.train import DSBConfig, Nets, output_scales
 from dsb.utils import image_grid, save_png
 
@@ -30,9 +30,12 @@ def load(rundir: str, ckpt: str | None, ch: int = 64):
         ckpt = json.load(open(os.path.join(ckdir, "latest.json")))["file"]
     f_net = b_net = UNet(in_channels=3, ch=ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2, attn_resolutions=(16,),
                          image_size=32, key=jax.random.PRNGKey(0))
+    ref = cfg.reference()
     if cfg.scaled_output:
-        sf, sb = output_scales(cfg.reference())
+        sf, sb = output_scales(ref)
         f_net, b_net = ScaledIncrement(f_net, sf), ScaledIncrement(b_net, sb)
+    if cfg.ref_residual:
+        f_net = ReferenceResidual(f_net, ref.gammas, ref.alpha, ref.mean)
     f_params, f_static = eqx.partition(f_net, eqx.is_array)
     b_params, b_static = eqx.partition(b_net, eqx.is_array)
     nets = eqx.tree_deserialise_leaves(os.path.join(ckdir, ckpt), Nets(f_params, f_params, b_params, b_params))
