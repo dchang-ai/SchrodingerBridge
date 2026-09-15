@@ -111,7 +111,7 @@ about 1e-3):
 | moons | 0.020 | 0.0028 |
 | circles | 0.0087 | 0.0028 |
 | S-curve | 0.093 | 0.0058 |
-| checkerboard | see `figures/` | |
+| checkerboard | 0.0099 | 0.0013 |
 
 ### 3. CIFAR-10
 
