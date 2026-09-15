@@ -1,0 +1,79 @@
+== example sbatch scripts from other users (headers only)
+--- /mnt/data0/shared/lana/cifar_grbm/run_cifar_gbm.sh
+#SBATCH --job-name=cifar_gbm
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=48G
+#SBATCH --gres=gpu:1
+#SBATCH --exclude=192-222-56-117,192-222-56-240,zizek,planck,bacon,tinybox,hyperplane-3
+#SBATCH --time=1440:00
+#SBATCH --output=outputs/%x_%j.log
+source /mnt/data0/shared/lana/thrml_env/bin/activate
+export HOME="/mnt/data0/shared/lana"
+srun python -u cifar_gbm.py
+--- /mnt/data0/shared/peter/un-0_clone/ablation_study/run_ablation.sh
+#   --no-sync                  Skip `uv sync` (dependencies already synced).
+    CUDA_VISIBLE_DEVICES="${gpu}" uv run python un0/eval.py \
+  uv run python - "${sweep_root}" "${cfg_key}" <<'PY'
+      uv run python un0/train_cifar10.py
+    echo "+ uv sync --group dev --group logging --group eval"
+    uv sync --group dev --group logging --group eval
+--- /mnt/data0/shared/peter/personal_Un-0/ablation_study/run_ablation.sh
+#   --no-sync                  Skip `uv sync` (dependencies already synced).
+    CUDA_VISIBLE_DEVICES="${gpu}" uv run python un0/eval.py \
+  uv run python - "${sweep_root}" "${cfg_key}" <<'PY'
+      uv run python un0/train_cifar10.py
+    echo "+ uv sync --group dev --group logging --group eval"
+    uv sync --group dev --group logging --group eval
+--- /mnt/data0/shared/owen/solvers/diffrax_solvers/runfile_circuit_gillespie.sh
+#SBATCH --job-name=circuit_gillespie
+#SBATCH --cpus-per-task=100
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=circuit_gillespie_%j.log
+source /home/frank/env_weak_solver/bin/activate
+export DATA_DIR=$OUTPUT_DIR
+export PYTHONPATH=$REPO_DIR:$PYTHONPATH
+export XLA_FLAGS="--xla_force_host_platform_device_count=$(nproc)"
+python $SCRIPT_NAME --n_cores $SLURM_CPUS_PER_TASK --model_type "inverter"
+# Deactivate the virtual environment
+deactivate
+--- /mnt/data0/shared/owen/solvers/diffrax_solvers/runfile_weak.sh
+#SBATCH --job-name=weak
+#SBATCH --cpus-per-task=50
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=weak_%j.log
+source /home/frank/env_weak_solver/bin/activate
+export DATA_DIR=$OUTPUT_DIR
+export PYTHONPATH=$REPO_DIR:$PYTHONPATH
+export XLA_FLAGS="--xla_force_host_platform_device_count=$(nproc)"
+python $SCRIPT_NAME --n_cores $SLURM_CPUS_PER_TASK --model_type "rc_circuit"
+# Deactivate the virtual environment
+deactivate
+--- /mnt/data0/shared/owen/solvers/diffrax_solvers/runfile_weak_adaptive.sh
+#SBATCH --job-name=weak_adaptive
+#SBATCH --cpus-per-task=50
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=weak_adaptive_%j.log
+source /home/frank/env_weak_solver/bin/activate
+export DATA_DIR=$OUTPUT_DIR
+export PYTHONPATH=$REPO_DIR:$PYTHONPATH
+export XLA_FLAGS="--xla_force_host_platform_device_count=$(nproc)"
+python $SCRIPT_NAME --n_cores $SLURM_CPUS_PER_TASK --model_type "gyrator"
+# Deactivate the virtual environment
+deactivate
+
+== scontrol show job my vscode job
+JobId=523525 JobName=vscode_tunnel
+   Partition=main AllocNode:Sid=fokker:1100951
+   BatchHost=mklgpusrv2
+   NumNodes=1 NumCPUs=16 NumTasks=1 CPUs/Task=16 ReqB:S:C:T=0:0:*:*
+   TRES=cpu=16,mem=64G,node=1,billing=16
+   Command=/mnt/data0/shared/dominic/launch_vscode.sh
+   WorkDir=/mnt/data0/shared/dominic
+   StdOut=/mnt/data0/shared/dominic/vscode_tunnel_523525.log
+
+== sacct test
+Slurm accounting storage is disabled

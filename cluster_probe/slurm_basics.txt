@@ -1,0 +1,70 @@
+== squeue -u dom
+             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+            523525      main vscode_t      dom  R    2:53:02      1 mklgpusrv2
+
+== sacctmgr assoc
+You are not running a supported accounting_storage plugin
+Only 'accounting_storage/slurmdbd' is supported.
+
+== scontrol show partition
+PartitionName=express
+   AllowGroups=ALL AllowAccounts=ALL AllowQos=ALL
+   AllocNodes=ALL Default=NO QoS=N/A
+   DefaultTime=NONE DisableRootJobs=NO ExclusiveUser=NO GraceTime=0 Hidden=NO
+   MaxNodes=UNLIMITED MaxTime=1-00:00:00 MinNodes=0 LLN=NO MaxCPUsPerNode=UNLIMITED
+   Nodes=129-146-8-103,129-146-99-85,192-222-51-248,192-222-54-123,192-222-56-[117,240],bacon,darwin,hyperplane-[3-4],lambda-hyperplane,lambda-hyperplane0,langevin,mklgpusrv[1-3],planck
+   PriorityJobFactor=1 PriorityTier=100 RootOnly=NO ReqResv=NO OverSubscribe=NO
+   OverTimeLimit=NONE PreemptMode=OFF
+   State=UP TotalCPUs=2404 TotalNodes=17 SelectTypeParameters=NONE
+   JobDefaults=(null)
+   DefMemPerNode=UNLIMITED MaxMemPerNode=UNLIMITED
+
+PartitionName=main
+   AllowGroups=ALL AllowAccounts=ALL AllowQos=ALL
+   AllocNodes=ALL Default=YES QoS=N/A
+   DefaultTime=NONE DisableRootJobs=NO ExclusiveUser=NO GraceTime=0 Hidden=NO
+   MaxNodes=UNLIMITED MaxTime=8-08:00:00 MinNodes=0 LLN=NO MaxCPUsPerNode=UNLIMITED
+   Nodes=129-146-8-103,129-146-99-85,192-222-51-248,192-222-54-123,192-222-56-[117,240],bacon,darwin,hyperplane-[3-4],lambda-hyperplane,lambda-hyperplane0,langevin,mklgpusrv[1-3],planck
+   PriorityJobFactor=1 PriorityTier=1 RootOnly=NO ReqResv=NO OverSubscribe=NO
+   OverTimeLimit=NONE PreemptMode=OFF
+   State=UP TotalCPUs=2404 TotalNodes=17 SelectTypeParameters=NONE
+   JobDefaults=(null)
+   DefMemPerNode=UNLIMITED MaxMemPerNode=UNLIMITED
+
+
+== sinfo node states
+NODELIST STATE GRES MEMORY FREE_MEM CPUS(A/I/O/T) CPU_LOAD
+129-146-8-103 draining gpu:a100:8 1797858 1664738 4/0/120/124 1.00
+129-146-8-103 draining gpu:a100:8 1797858 1664738 4/0/120/124 1.00
+129-146-99-85 mixed gpu:a100:1 205064 91301 1/29/0/30 3.37
+129-146-99-85 mixed gpu:a100:1 205064 91301 1/29/0/30 3.37
+192-222-51-248 idle gpu:GH200:1 521911 520513 0/64/0/64 0.64
+192-222-51-248 idle gpu:GH200:1 521911 520513 0/64/0/64 0.64
+192-222-54-123 mixed gpu:h100:1 210104 112816 2/24/0/26 3.50
+192-222-54-123 mixed gpu:h100:1 210104 112816 2/24/0/26 3.50
+192-222-56-117 idle gpu:GH200:1 538294 402368 0/64/0/64 0.00
+192-222-56-117 idle gpu:GH200:1 538294 402368 0/64/0/64 0.00
+192-222-56-240 idle gpu:GH200:1 538294 434465 0/64/0/64 0.00
+192-222-56-240 idle gpu:GH200:1 538294 434465 0/64/0/64 0.00
+bacon idle gpu:3090:2 192649 170470 0/128/0/128 0.00
+bacon idle gpu:3090:2 192649 170470 0/128/0/128 0.00
+darwin idle gpu:3090:2 515578 426161 0/128/0/128 0.00
+darwin idle gpu:3090:2 515578 426161 0/128/0/128 0.00
+hyperplane-3 mixed gpu:a100:7 499357 431183 4/252/0/256 1.00
+hyperplane-3 mixed gpu:a100:7 499357 431183 4/252/0/256 1.00
+hyperplane-4 mixed gpu:a100:8 499348 185930 8/248/0/256 2.00
+hyperplane-4 mixed gpu:a100:8 499348 185930 8/248/0/256 2.00
+lambda-hyperplane mixed gpu:a100:8 2051954 1045689 12/244/0/256 3.00
+lambda-hyperplane mixed gpu:a100:8 2051954 1045689 12/244/0/256 3.00
+lambda-hyperplane0 idle gpu:a100:8 2051953 1241218 0/256/0/256 0.01
+lambda-hyperplane0 idle gpu:a100:8 2051953 1241218 0/256/0/256 0.01
+langevin idle gpu:3090:2 128618 114273 0/48/0/48 0.02
+langevin idle gpu:3090:2 128618 114273 0/48/0/48 0.02
+mklgpusrv1 idle gpu:rtx6000:8 757150 448223 0/192/0/192 0.00
+mklgpusrv1 idle gpu:rtx6000:8 757150 448223 0/192/0/192 0.00
+mklgpusrv2 mixed gpu:rtx6000:8 757150 343586 40/152/0/192 5.95
+mklgpusrv2 mixed gpu:rtx6000:8 757150 343586 40/152/0/192 5.95
+mklgpusrv3 mixed gpu:rtx6000:8 757150 277558 20/172/0/192 5.18
+mklgpusrv3 mixed gpu:rtx6000:8 757150 277558 20/172/0/192 5.18
+planck idle gpu:3090:2 257161 242162 0/128/0/128 0.03
+planck idle gpu:3090:2 257161 242162 0/128/0/128 0.03

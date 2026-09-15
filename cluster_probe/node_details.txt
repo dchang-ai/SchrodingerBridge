@@ -1,0 +1,29 @@
+== node arch/OS/GRES summary
+
+== scontrol show node hyperplane-4
+NodeName=hyperplane-4 Arch=x86_64 CoresPerSocket=64 
+   CPUAlloc=8 CPUTot=256 CPULoad=2.13
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:a100:8
+   NodeAddr=hyperplane-4 NodeHostName=hyperplane-4 Version=21.08.5
+   OS=Linux 6.8.0-134-generic #134-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 26 18:43:11 UTC 2026 
+   RealMemory=499348 AllocMem=81920 FreeMem=185690 Sockets=2 Boards=1
+   State=MIXED ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=express,main 
+   BootTime=2026-07-14T19:50:00 SlurmdStartTime=2026-09-12T02:02:29
+   LastBusyTime=2026-09-11T07:36:36
+   CfgTRES=cpu=256,mem=499348M,billing=256
+   AllocTRES=cpu=8,mem=80G
+   CapWatts=n/a
+   CurrentWatts=0 AveWatts=0
+   ExtSensorsJoules=n/s ExtSensorsWatts=0 ExtSensorsTemp=n/s
+
+
+== scontrol show node 192-222-51-248 (GH200)
+NodeName=192-222-51-248 Arch=aarch64 CoresPerSocket=64 
+   CPUAlloc=0 CPUTot=64 CPULoad=1.27
+   Gres=gpu:GH200:1
+   OS=Linux 6.8.0-1013-nvidia-64k #14~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Aug 21 01:03:36 UTC 2 
+   RealMemory=521911 AllocMem=0 FreeMem=516566 Sockets=1 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A

@@ -1,0 +1,9 @@
+cifar_N50 524204
+cifar_N20 524205
+cifar_N50q 524387
+cifar_N20q 524388
+toy_cb 524389
+fidloop 524813
+cifar_big_q 524926
+fidloop2 524928
+cifar_big_geo 524929

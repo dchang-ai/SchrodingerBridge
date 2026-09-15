@@ -1,0 +1,97 @@
+== mounts on login
+/dev/nvme0n1p4 on /home type ext4 (rw,relatime)
+/dev/sda1 on /mnt/data0 type ext4 (rw,relatime,stripe=192)
+
+== /etc/exports
+# /etc/exports: the access control list for filesystems which may be exported
+#		to NFS clients.  See exports(5).
+#
+# Example for NFSv2 and NFSv3:
+# /srv/homes       hostname1(rw,sync,no_subtree_check) hostname2(ro,sync,no_subtree_check)
+#
+# Example for NFSv4:
+# /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
+# /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
+#
+/mnt/data0/shared  100.95.5.103(rw,sync,no_subtree_check,no_root_squash) \
+                   192-222-56-240(rw,sync,no_subtree_check,no_root_squash) \
+                   192-222-56-117(rw,sync,no_subtree_check,no_root_squash) \
+                   lambda-hyperplane0(rw,sync,no_subtree_check,no_root_squash) \
+                   lambda-hyperplane(rw,sync,no_subtree_check,no_root_squash) \
+                   darwin(rw,sync,no_subtree_check,no_root_squash) \
+                   planck(rw,sync,no_subtree_check,no_root_squash) \
+                   langevin(rw,sync,no_subtree_check,no_root_squash) \
+                   bacon(rw,sync,no_subtree_check,no_root_squash) \
+		   tinybox(rw,sync,no_subtree_check,no_root_squash) \
+		   hyperplane-3(rw,sync,no_subtree_check,no_root_squash) \
+		   hyperplane-4(rw,sync,no_subtree_check,no_root_squash) \
+		   64-181-245-207(rw,sync,no_subtree_check,no_root_squash) \
+		   zizek(rw,sync,no_subtree_check,no_root_squash) \
+		   92-5-110-18(rw,sync,no_subtree_check,no_root_squash) \
+		   mklgpusrv1(rw,sync,no_subtree_check,no_root_squash) \
+                   mklgpusrv2(rw,sync,no_subtree_check,no_root_squash) \
+                   mklgpusrv3(rw,sync,no_subtree_check,no_root_squash) \
+		   129-146-8-103(rw,sync,no_subtree_check,no_root_squash) \
+		   192-222-54-123(rw,sync,no_subtree_check,no_root_squash) \
+		   129-146-99-85(rw,sync,no_subtree_check,no_root_squash) \
+		   10.11.10.12(rw,sync,no_subtree_check,no_root_squash) \
+		   10.11.10.14(rw,sync,no_subtree_check,no_root_squash) \
+		   100.114.194.20(rw,sync,no_subtree_check,no_root_squash)
+
+== showmount
+Export list for localhost:
+/mnt/data0/shared 100.114.194.20,10.11.10.14,10.11.10.12,129-146-99-85.tail02e69.ts.net,192-222-54-123.tail02e69.ts.net,129-146-8-103.tail02e69.ts.net,mklgpusrv3.tail02e69.ts.net,mklgpusrv2.tail02e69.ts.net,mklgpusrv1.tail02e69.ts.net,92-5-110-18.tail02e69.ts.net,zizek.tail02e69.ts.net,64-181-245-207.tail02e69.ts.net,hyperplane-4.tail02e69.ts.net,hyperplane-3.tail02e69.ts.net,tinybox.tail02e69.ts.net,bacon,langevin,planck,darwin,lambda-hyperplane,lambda-hyperplane0,192-222-56-117.tail02e69.ts.net,192-222-56-240.tail02e69.ts.net,100.95.5.103
+
+== pyenv versions
+total 8
+drwxrwxr-x  2 dom dom 4096 Sep  5 12:19 .
+drwxrwxr-x 14 dom dom 4096 Sep  5 12:19 ..
+
+== DOMDIR
+total 116
+drwxrwxrwx+ 20 dom    dom      4096 Sep 14 17:56 .
+drwxrwxrwx+ 43 nobody nogroup  4096 Sep 14 16:59 ..
+-rw-------+  1 dom    dom      3183 Sep  4 18:38 .bash_history
+drwxrwxrwx+  7 dom    dom      4096 Sep  4 18:45 .cache
+drwxrwxrwx+  3 dom    dom      4096 Sep  4 16:33 .claude
+drwxrwxrwx+  2 dom    dom      4096 Sep  4 17:15 .conda
+drwxrwxrwx+  3 dom    dom      4096 Sep  4 17:14 .config
+-rw-rw-rw-+  1 dom    dom       273 Sep  4 17:42 env.sh
+drwxrwxrwx+  5 dom    dom      4096 Sep 14 17:29 fanclub_venv
+drwxrwxrwx+  3 dom    dom      4096 Sep 14 17:29 .jupyter-server
+drwxrwxrwx+  2 dom    dom      4096 Sep 14 17:40 JupyterServer
+-rw-rw-rw-+  1 dom    dom       941 Sep  5 12:21 launch_vscode.sh
+drwxrwxrwx+  3 dom    dom      4096 Sep  4 17:44 .local
+drwxrwxrwx+  3 dom    dom      4096 Sep  4 17:44 local
+drwxrwsr-x+  3 dom    dom      4096 Sep  4 17:15 .mamba
+drwxrwxrwx+ 14 dom    dom      4096 Sep 14 11:56 nvtop
+drwxrwxrwx+ 12 dom    dom      4096 Sep 14 15:24 onboarding
+drwxrwxrwx+ 14 dom    dom      4096 Sep  4 15:30 .pyenv
+-rw-------+  1 dom    dom        12 Sep  4 17:51 .python_history
+drwxrwxrwx+  5 dom    dom      4096 Sep 14 18:15 SchrodingerBridge
+drwxrwxrwx+ 80 dom    dom      4096 Sep  4 22:56 tmp
+drwxrwxrwx+  4 dom    dom      4096 Sep 14 17:28 .uv-python
+-rw-------+  1 dom    dom     15307 Sep  4 18:02 .viminfo
+drwxrwxrwx+  3 dom    dom      4096 Sep  4 14:40 .vscode
+drwxrwxrwx+  5 dom    dom      4096 Sep  4 17:14 .vscode-server
+-rw-rw-rw-+  1 dom    dom      2943 Sep 14 18:15 vscode_tunnel_523525.log
+
+ls: cannot access '/mnt/data0/shared/dominic/bin': No such file or directory
+/mnt/data0/shared/dominic/.local/bin:
+code
+
+== pyvenv.cfg under DOMDIR (maxdepth 3)
+/mnt/data0/shared/dominic/fanclub_venv/pyvenv.cfg
+/mnt/data0/shared/dominic/onboarding/pyvenv.cfg
+/mnt/data0/shared/dominic/.jupyter-server/venv/pyvenv.cfg
+
+== ~/.local site-packages
+
+== ~/.local/bin
+claude
+code
+
+== uv cache
+ls: cannot access '/home/dom/.cache/uv': No such file or directory
+/home/dom/.cache/pip
+/tmp/uv-cache

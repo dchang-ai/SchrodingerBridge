@@ -1,0 +1,72 @@
+== GPU usage per node (squeue all)
+   JOBID PARTITION         USER    STATE       TIME  NODES        TRES_PER_NODE NODELIST(REASON)
+  524077   express  conancarrow  RUNNING       0:07      1                  N/A 129-146-99-85
+  524079   express  conancarrow  RUNNING       0:07      1                  N/A 192-222-54-123
+  523525      main          dom  RUNNING    2:53:06      1                  N/A mklgpusrv2
+522671_5      main        peter  RUNNING    6:43:13      1           gres:gpu:1 hyperplane-4
+522671_6      main        peter  RUNNING    6:43:13      1           gres:gpu:1 hyperplane-3
+519724_0      main       mxpoch  RUNNING   21:00:35      1      gres:gpu:a100:1 129-146-8-103
+507901_0      main        peter  RUNNING 3-08:42:02      1           gres:gpu:1 mklgpusrv2
+507901_2      main        peter  RUNNING 3-08:42:02      1           gres:gpu:1 mklgpusrv3
+507901_3      main        peter  RUNNING 3-08:42:02      1           gres:gpu:1 mklgpusrv3
+507804_0      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv2
+507804_1      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv2
+507804_2      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv2
+507804_3      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv2
+507804_4      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv2
+507804_5      main        peter  RUNNING 3-09:05:22      1           gres:gpu:1 mklgpusrv3
+507454_0      main        peter  RUNNING 3-10:38:30      1           gres:gpu:1 mklgpusrv3
+507454_1      main        peter  RUNNING 3-10:38:30      1           gres:gpu:1 lambda-hyperplane
+507454_2      main        peter  RUNNING 3-10:38:30      1           gres:gpu:1 lambda-hyperplane
+507454_3      main        peter  RUNNING 3-10:38:30      1           gres:gpu:1 lambda-hyperplane
+507454_4      main        peter  RUNNING 3-10:38:30      1           gres:gpu:1 hyperplane-4
+505728_2      main        peter  RUNNING 3-18:43:42      1           gres:gpu:1 mklgpusrv3
+
+== per-node GRES used
+NODELIST STATE GRES                ACTIVE_FEATURES
+129-146-8-103 draining gpu:a100:8                         (null)
+129-146-8-103 draining gpu:a100:8                         (null)
+129-146-99-85 mixed gpu:a100:1                         (null)
+129-146-99-85 mixed gpu:a100:1                         (null)
+192-222-51-248 idle gpu:GH200:1                         (null)
+192-222-51-248 idle gpu:GH200:1                         (null)
+192-222-54-123 mixed gpu:h100:1                         (null)
+192-222-54-123 mixed gpu:h100:1                         (null)
+192-222-56-117 idle gpu:GH200:1                         (null)
+192-222-56-117 idle gpu:GH200:1                         (null)
+192-222-56-240 idle gpu:GH200:1                         (null)
+192-222-56-240 idle gpu:GH200:1                         (null)
+bacon idle gpu:3090:2                         (null)
+bacon idle gpu:3090:2                         (null)
+darwin idle gpu:3090:2                         (null)
+darwin idle gpu:3090:2                         (null)
+hyperplane-3 mixed gpu:a100:7                         (null)
+hyperplane-3 mixed gpu:a100:7                         (null)
+hyperplane-4 mixed gpu:a100:8                         (null)
+hyperplane-4 mixed gpu:a100:8                         (null)
+lambda-hyperplane mixed gpu:a100:8                         (null)
+lambda-hyperplane mixed gpu:a100:8                         (null)
+lambda-hyperplane0 idle gpu:a100:8                         (null)
+lambda-hyperplane0 idle gpu:a100:8                         (null)
+langevin idle gpu:3090:2                         (null)
+langevin idle gpu:3090:2                         (null)
+mklgpusrv1 idle gpu:rtx6000:8                         (null)
+mklgpusrv1 idle gpu:rtx6000:8                         (null)
+mklgpusrv2 mixed gpu:rtx6000:8                         (null)
+129-146-8-103 CFG:cpu=124,mem=1797858M,billing=124 ALLOC:cpu=4,mem=64G
+129-146-99-85 CFG:cpu=30,mem=205064M,billing=30 ALLOC:cpu=1,mem=100M
+192-222-51-248 CFG:cpu=64,mem=521911M,billing=64 ALLOC:
+192-222-54-123 CFG:cpu=26,mem=210104M,billing=26 ALLOC:cpu=2,mem=100M
+192-222-56-117 CFG:cpu=64,mem=538294M,billing=64 ALLOC:
+192-222-56-240 CFG:cpu=64,mem=538294M,billing=64 ALLOC:
+bacon CFG:cpu=128,mem=192649M,billing=128 ALLOC:
+darwin CFG:cpu=128,mem=515578M,billing=128 ALLOC:
+hyperplane-3 CFG:cpu=256,mem=499357M,billing=256 ALLOC:cpu=4,mem=32G
+hyperplane-4 CFG:cpu=256,mem=499348M,billing=256 ALLOC:cpu=8,mem=80G
+lambda-hyperplane CFG:cpu=256,mem=2051954M,billing=256 ALLOC:cpu=12,mem=144G
+lambda-hyperplane0 CFG:cpu=256,mem=2051953M,billing=256 ALLOC:
+langevin CFG:cpu=48,mem=128618M,billing=48 ALLOC:
+mklgpusrv1 CFG:cpu=192,mem=757150M,billing=192 ALLOC:
+mklgpusrv2 CFG:cpu=192,mem=757150M,billing=192 ALLOC:cpu=40,mem=448G
+mklgpusrv3 CFG:cpu=192,mem=757150M,billing=192 ALLOC:cpu=20,mem=272G
+planck CFG:cpu=128,mem=257161M,billing=128 ALLOC:

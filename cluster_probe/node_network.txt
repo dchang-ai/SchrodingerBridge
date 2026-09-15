@@ -1,0 +1,36 @@
+== node address resolution (100.x = Tailscale VPN, else LAN)
+lambda-hyperplane    100.84.107.65
+lambda-hyperplane0   100.89.67.45
+hyperplane-3         100.114.208.18
+hyperplane-4         100.113.102.77
+mklgpusrv1           100.107.219.23
+mklgpusrv2           100.69.89.70
+mklgpusrv3           100.110.120.26
+bacon                100.98.173.78
+darwin               100.127.102.121
+langevin             100.104.155.108
+planck               100.106.234.96
+129-146-99-85        100.73.197.125
+192-222-54-123       100.76.50.116
+129-146-8-103        100.72.225.121
+192-222-51-248       192-222-56-117       100.89.212.93
+192-222-56-240       100.120.92.111
+
+== scontrol NodeAddr
+129-146-8-103 129-146-8-103
+129-146-99-85 129-146-99-85
+192-222-51-248 100.114.194.20
+192-222-54-123 192-222-54-123
+192-222-56-117 192-222-56-117
+192-222-56-240 192-222-56-240
+bacon bacon
+darwin darwin
+hyperplane-3 hyperplane-3
+hyperplane-4 hyperplane-4
+lambda-hyperplane lambda-hyperplane
+lambda-hyperplane0 lambda-hyperplane0
+langevin langevin
+mklgpusrv1 mklgpusrv1
+mklgpusrv2 mklgpusrv2
+mklgpusrv3 mklgpusrv3
+planck planck

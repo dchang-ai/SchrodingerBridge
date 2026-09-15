@@ -1,0 +1,37 @@
+=================== /mnt/data0/shared/dominic/fanclub_venv
+home = /mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.11.4
+version_info = 3.12.13
+include-system-site-packages = false
+-- python resolves to:
+/mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12
+Python 3.12.13
+-- packages:
+matplotlib_inline 
+-- dist-info versions:
+matplotlib_inline-0.2.2.dist-info 
+=================== /mnt/data0/shared/dominic/onboarding
+home = /usr/bin
+include-system-site-packages = false
+version = 3.10.12
+-- python resolves to:
+/usr/bin/python3.10
+Python 3.10.12
+-- packages:
+einops equinox jax jax_cuda12_plugin jaxlib jax_plugins jaxtyping matplotlib matplotlib_inline numpy numpy.libs nvidia optax PIL pillow.libs tensorflow tensorflow_datasets tensorflow_metadata tqdm 
+-- dist-info versions:
+einops-0.8.2.dist-info equinox-0.13.8.dist-info jax-0.11.1.dist-info jax_cuda12_pjrt-0.11.1.dist-info jax_cuda12_plugin-0.11.1.dist-info jaxlib-0.11.1.dist-info jaxtyping-0.3.11.dist-info matplotlib-3.11.1.dist-info matplotlib_inline-0.2.2.dist-info numpy-2.5.2.dist-info nvidia_cublas_cu12-12.9.2.10.dist-info nvidia_cudnn_cu12-9.25.1.1.dist-info optax-0.2.8.dist-info pillow-12.3.0.dist-info tensorflow-2.21.0.dist-info tensorflow_datasets-4.9.10.dist-info tensorflow_metadata-1.21.0.dist-info tqdm-4.70.0.dist-info 
+=================== /mnt/data0/shared/dominic/.jupyter-server/venv
+home = /mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.11.4
+version_info = 3.12.13
+include-system-site-packages = false
+-- python resolves to:
+/mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12
+Python 3.12.13
+-- packages:
+matplotlib_inline 
+-- dist-info versions:
+matplotlib_inline-0.2.2.dist-info 

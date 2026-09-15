@@ -1,0 +1,51 @@
+== GPUs requested per node by running jobs (squeue TRES_PER_NODE / gpus)
+129-146-8-103 1
+129-146-99-85 1
+192-222-54-123 1
+hyperplane-3 1
+hyperplane-4 2
+lambda-hyperplane 3
+mklgpusrv2 6
+mklgpusrv3 5
+
+== node GRES totals
+129-146-8-103 gpu:a100:8 draining
+129-146-99-85 gpu:a100:1 mixed
+192-222-51-248 gpu:GH200:1 idle
+192-222-54-123 gpu:h100:1 mixed
+192-222-56-117 gpu:GH200:1 idle
+192-222-56-240 gpu:GH200:1 idle
+bacon gpu:3090:2 idle
+darwin gpu:3090:2 idle
+hyperplane-3 gpu:a100:7 mixed
+hyperplane-4 gpu:a100:8 mixed
+lambda-hyperplane0 gpu:a100:8 idle
+lambda-hyperplane gpu:a100:8 mixed
+langevin gpu:3090:2 idle
+mklgpusrv1 gpu:rtx6000:8 idle
+mklgpusrv2 gpu:rtx6000:8 mixed
+mklgpusrv3 gpu:rtx6000:8 mixed
+planck gpu:3090:2 idle
+
+== onboarding venv origin
+total 60
+drwxrwxrwx+ 12 dom dom 4096 Sep 14 15:24 .
+drwxrwxrwx+ 20 dom dom 4096 Sep 14 17:56 ..
+drwxrwxrwx+  2 dom dom 4096 Sep 14 11:58 bin
+drwxrwxrwx+  2 dom dom 4096 Sep 14 14:58 checkpoints
+drwxrwxrwx+  2 dom dom 4096 Sep 14 16:45 checkpoints_rdmk
+drwxrwxrwx+  2 dom dom 4096 Sep 11 18:41 documentation
+drwxrwxrwx+  3 dom dom 4096 Sep  5 12:56 etc
+drwxrwxrwx+  8 dom dom 4096 Sep 10 23:13 .git
+-rw-rw-rw-+  1 dom dom  137 Sep 10 23:11 .gitignore
+drwxrwxrwx+  2 dom dom 4096 Sep  5 12:55 include
+drwxrwxrwx+  4 dom dom 4096 Sep  5 12:56 lib
+lrwxrwxrwx   1 dom dom    3 Sep  5 12:55 lib64 -> lib
+-rw-rw-rw-+  1 dom dom    0 Sep  5 12:44 .lock
+-rw-rw-rw-+  1 dom dom   71 Sep  5 12:55 pyvenv.cfg
+-rw-rw-rw-+  1 dom dom 3179 Sep  5 12:39 requirements.txt
+drwxrwxrwx+  6 dom dom 4096 Sep  5 12:56 share
+drwxrwxrwx+  4 dom dom 4096 Sep 14 14:13 src
+/mnt/data0/shared/dominic/onboarding/requirements.txt
+uv 0.12.10 (x86_64-unknown-linux-gnu)
+pip 22.0.2 from /mnt/data0/shared/dominic/onboarding/lib/python3.10/site-packages/pip (python 3.10)

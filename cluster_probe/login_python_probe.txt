@@ -1,0 +1,41 @@
+== which
+python       (none)
+python3      /usr/bin/python3
+conda        (none)
+mamba        (none)
+micromamba   (none)
+uv           (none)
+module       (none)
+pip          /usr/bin/pip
+pip3         /usr/bin/pip3
+virtualenv   /usr/bin/virtualenv
+poetry       (none)
+pixi         (none)
+nvidia-smi   (none)
+nvcc         (none)
+
+== dirs
+/home/dom/.local/bin
+/opt/MegaRAID
+
+== conda env list
+/bin/bash: line 1: conda: command not found
+
+== module avail
+/bin/bash: line 1: type: module: not found
+/bin/bash: line 1: module: command not found
+
+== python versions
+Python 3.10.12
+/bin/bash: line 1: python: command not found
+Python 3.10.12
+/usr/bin/python3
+/usr/bin/python3.10
+/usr/bin/python3.10-config
+/usr/bin/python3.11
+/usr/bin/python3-config
+/usr/bin/python3-futurize
+/usr/bin/python3-pasteurize
+
+== nvidia-smi on login
+/bin/bash: line 1: nvidia-smi: command not found

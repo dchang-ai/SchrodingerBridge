@@ -1,0 +1,85 @@
+== env.sh
+# /mnt/data0/shared/dominic/env.sh
+export BASE=/mnt/data0/shared/dominic
+export HOME="$BASE"                 # the important line
+export XDG_CACHE_HOME="$BASE/.cache"
+export TMPDIR="$BASE/tmp"           # /tmp is often small or noexec
+mkdir -p "$XDG_CACHE_HOME" "$TMPDIR"
+
+
+== launch_vscode.sh
+#!/bin/bash
+#SBATCH --job-name=vscode_tunnel
+#SBATCH --output=vscode_tunnel_%j.log
+#SBATCH --error=vscode_tunnel_%j.log
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --gpus-per-task=1
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
+#SBATCH --partition=main
+#SBATCH --nodelist=mklgpusrv2
+
+# 2. Print metadata to the log file
+echo "=========================================================="
+echo "Starting VS Code Remote Tunnel"
+echo "Job ID: $SLURM_JOB_ID"
+echo "Running on Node: $SLURM_NODENAME"
+echo "=========================================================="
+
+# 3. Launch the VS Code Tunnel
+# We use '--accept-server-license-terms' to prevent the script from stalling.
+# Switch '--provider microsoft' to '--provider github' depending on your preference.
+
+# source /mnt/data0/shared/dominic/env.sh
+
+code tunnel --cli-data-dir "$DOMDIR/.vscode" --server-data-dir "$DOMDIR/.vscode-server" --accept-server-license-terms 
+
+== .uv-python
+lrwxrwxrwx  1 dom dom   69 Sep 14 17:28 /mnt/data0/shared/dominic/.uv-python/cpython-3.12-linux-x86_64-gnu -> /mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu
+
+/mnt/data0/shared/dominic/.uv-python:
+total 24
+drwxrwxrwx+  4 dom dom 4096 Sep 14 17:28 .
+drwxrwxrwx+ 20 dom dom 4096 Sep 14 17:56 ..
+drwxrwxrwx+  6 dom dom 4096 Sep 14 17:28 cpython-3.12.13-linux-x86_64-gnu
+lrwxrwxrwx   1 dom dom   69 Sep 14 17:28 cpython-3.12-linux-x86_64-gnu -> /mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu
+-rw-rw-rw-+  1 dom dom    1 Sep 14 17:28 .gitignore
+-rw-rw-rw-+  1 dom dom    0 Sep 14 17:28 .lock
+drwxrwxrwx+  2 dom dom 4096 Sep 14 17:28 .temp
+
+/mnt/data0/shared/dominic/.uv-python/cpython-3.12.13-linux-x86_64-gnu:
+total 28
+drwxrwxrwx+ 6 dom dom 4096 Sep 14 17:28 .
+drwxrwxrwx+ 4 dom dom 4096 Sep 14 17:28 ..
+drwxrwxrwx+ 2 dom dom 4096 Sep 14 17:28 bin
+-rw-rw-rw-+ 1 dom dom    8 Sep 14 17:28 BUILD
+drwxrwxrwx+ 3 dom dom 4096 Sep 14 17:28 include
+drwxrwxrwx+ 9 dom dom 4096 Sep 14 17:28 lib
+
+== uv binary search
+/mnt/data0/shared/dominic/local:
+total 12
+drwxrwxrwx+  3 dom dom 4096 Sep  4 17:44 .
+drwxrwxrwx+ 20 dom dom 4096 Sep 14 17:56 ..
+drwxrwxrwx+  2 dom dom 4096 Sep  4 17:44 bin
+
+/mnt/data0/shared/dominic/.local/bin:
+total 33404
+drwxrwxrwx+ 2 dom dom     4096 Sep  4 17:44 .
+drwxrwxrwx+ 3 dom dom     4096 Sep  4 17:44 ..
+/mnt/data0/shared/dominic/onboarding/bin/uv
+
+== .conda .mamba
+/mnt/data0/shared/dominic/.conda:
+total 12
+drwxrwxrwx+  2 dom dom 4096 Sep  4 17:15 .
+drwxrwxrwx+ 20 dom dom 4096 Sep 14 17:56 ..
+-rw-rw-rw-+  1 dom dom   35 Sep  4 17:15 environments.txt
+
+/mnt/data0/shared/dominic/.mamba:
+total 12
+drwxrwsr-x+  3 dom dom 4096 Sep  4 17:15 .
+drwxrwxrwx+ 20 dom dom 4096 Sep 14 17:56 ..
+drwxrwsr-x+  2 dom dom 4096 Sep  4 17:17 pkgs

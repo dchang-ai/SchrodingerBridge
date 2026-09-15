@@ -1,0 +1,44 @@
+== project dir
+total 7680
+drwxrwxrwx+  5 dom dom    4096 Sep 14 18:15 .
+drwxrwxrwx+ 20 dom dom    4096 Sep 14 17:56 ..
+-rw-rw-rw-+  1 dom dom 7837737 Sep 14 18:10 2106.01357v5.pdf
+drwxrwxrwx+  2 dom dom    4096 Sep 14 18:15 cluster_probe
+drwxrwxrwx+  7 dom dom    4096 Sep 14 18:15 .git
+-rw-rw-rw-+  1 dom dom    1020 Sep 14 18:13 goal.txt
+drwxrwxrwx+  2 dom dom    4096 Sep 14 18:10 .ipynb_checkpoints
+
+== git remote
+
+== goal.txt
+/goal
+
+I have included here a paper. I would like you to please implement Algorithm 1. Demonstrate this on some reasonably nontrivial dataset; let's say CIFAR-10. By the way
+I didn't read the paper so you have some liberty to decide what constitutes a decent implementation and demonstration.
+
+In the course of your work please commit frequently, with short commit messages: we will use the diffs to discover the content of the commit, rather than the
+commit messages.
+
+We are on a shared cluster. You will have to submit jobs with sbatch, and you will have to figure out also which directories and environments the nodes have access to.
+In fact, you will have to resolve this carefully at the start and should probably assign a subagent to do it while you read the paper and plan the implementation; it is
+easy for jobs to fail silently before you have ascertained how to use the GPUs. Also please be careful not to pwn the nodes by allocating all their memory or CPUs. 
+
+We're a jax shop so please use jax and equinox.
+== df
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        21T   17T  3.6T  83% /mnt/data0
+/dev/nvme0n1p4  822G  659G  122G  85% /home
+/dev/nvme0n1p2   49G   26G   21G  56% /
+
+== quota
+/bin/bash: line 1: quota: command not found
+
+== internet from login
+https://pypi.org                                             HTTP/2 200 
+
+https://storage.googleapis.com                               HTTP/2 400 
+
+https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz      HTTP/2 301 
+
+https://github.com                                           HTTP/2 200 
+

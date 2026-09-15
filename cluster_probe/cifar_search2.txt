@@ -1,0 +1,86 @@
+== candidate cifar locations
+--- /mnt/data0/shared/trevor/vae_playground/cifar
+total 24
+drwxrwxrwx+ 3 trevor trevor 4096 Jul 21  2025 .
+drwxrwxrwx+ 6 trevor trevor 4096 Jul 21  2025 ..
+-rw-rw-rw-+ 1 trevor trevor 1886 Jul 18  2025 cifar_convnets.py
+-rw-rw-rw-+ 1 trevor trevor    0 Jul 18  2025 __init__.py
+drwxrwxrwx+ 2 trevor trevor 4096 Jul 21  2025 __pycache__
+-rw-rw-rw-+ 1 trevor trevor 5210 Jul 21  2025 train_gaussian_cifar.py
+--- /mnt/data0/shared/peter/datasets
+total 37730156
+drwxrwxrwx+  8 peter peter        4096 Sep 11 00:02 .
+drwxrwxrwx+ 49 peter peter        4096 Sep  9 16:37 ..
+-rw-rw-rw-+  1 peter peter  8983106254 Sep 10 15:41 celeba128.npz
+-rw-rw-rw-+  1 peter peter     1730659 Sep 10 15:37 celeba128_sample_grid.png
+-rw-rw-rw-+  1 peter peter  2246873762 Sep 10 15:11 celeba64.npz
+-rw-rw-rw-+  1 peter peter      503971 Sep 10 15:11 celeba64_sample_grid.png
+-rw-r--r--+  1 peter peter   153600128 Jul  7 15:23 celeba_color_cache_50000_32x32.npy
+drwxr-xr-x+  4 peter peter        4096 Jul  7 15:11 celeba_data_from_other_codebase
+-rw-rw-rw-+  1 peter peter   154001002 Jul  7 15:31 celeba.npz
+-rw-rw-rw-+  1 peter peter   256401632 Jul  7 15:50 celeba_vq5.npz
+-rw-rw-rw-+  1 peter peter   184801002 May  6 15:34 cifar10.npz
+--- /mnt/data0/shared/owen/datasets
+ls: cannot open directory '/mnt/data0/shared/owen/datasets': Permission denied
+--- /mnt/data0/shared/lana/cifar_grbm
+total 528
+drwxrwxrwx+  5 lanaxu lanaxu  4096 Mar 17 20:56 .
+drwxrwxrwx+ 13 lanaxu lanaxu  4096 May  4 01:52 ..
+-rw-rw-rw-+  1 lanaxu lanaxu  6622 Mar 15  2026 beta_sweep.py
+-rw-rw-rw-+  1 lanaxu lanaxu 36228 Mar 19 03:19 cifar_dense_grbm.py
+-rw-rw-rw-+  1 lanaxu lanaxu 26300 Mar 17 00:00 cifar_dense_grbm_wt.py
+-rw-rw-rw-+  1 lanaxu lanaxu 41480 Mar 15  2026 cifar_gbm.py
+-rw-rw-rw-+  1 lanaxu lanaxu 43981 Mar 15  2026 cifar_local_grbm_2b.py
+-rw-rw-rw-+  1 lanaxu lanaxu 43749 Mar 15  2026 cifar_local_grbm_2c.py
+-rw-rw-rw-+  1 lanaxu lanaxu 44298 Mar 15  2026 cifar_local_grbm_3.py
+-rw-rw-rw-+  1 lanaxu lanaxu 43292 Mar 15  2026 cifar_local_grbm.py
+lrwxrwxrwx   1 lanaxu lanaxu    33 Mar 13  2026 data -> /mnt/data0/shared/lana/mnist/data
+--- /mnt/data0/shared/lana/data
+total 8
+drwxrwxrwx+  2 lanaxu lanaxu 4096 May  4 01:52 .
+drwxrwxrwx+ 13 lanaxu lanaxu 4096 May  4 01:52 ..
+--- /mnt/data0/shared/sam/data
+total 118512
+drwxrwxrwx+ 11 sam sam     4096 Dec  1  2025 .
+drwxrwxrwx+ 12 sam sam     4096 Dec 12  2025 ..
+drwxrwxr-x+  2 sam sam     4096 Dec  1  2025 cifar10
+-rw-rw-rw-+  1 sam sam 16785908 Dec  1  2025 cifar10_greyscale_2levels.npz
+drwxrwxrwx+  2 sam sam  1384448 Oct 20  2025 cifar10_saved
+drwxrwxrwx+  2 sam sam     4096 Oct 20  2025 fashion_mnist
+drwxrwxrwx+  2 sam sam  1875968 Oct 20  2025 fashion_mnist_saved
+-rw-rw-rw-+  1 sam sam 16785908 Oct 29  2025 fid_stats_cifar10.npz
+-rw-rw-rw-+  1 sam sam 16785908 Oct 23  2025 fid_stats_fashion_mnist.npz
+-rw-rw-rw-+  1 sam sam 16785908 Oct 27  2025 fid_stats_fashion_mnist_thresholded.npz
+-rw-rw-rw-+  1 sam sam 16785908 Oct 22  2025 fid_stats_mnist.npz
+--- /mnt/data0/shared/alex/data
+total 16
+drwxrwxrwx+  4 alex alex 4096 Aug  4  2025 .
+drwxrwxrwx+ 12 alex alex 4096 Jun 23 18:16 ..
+drwxrwxrwx+  4 alex alex 4096 Aug  4  2025 datasets
+drwxrwxrwx+  7 alex alex 4096 Aug  7  2025 models
+--- /mnt/data0/shared/anton/data
+total 17656304
+drwxrwxrwx+  3 anton anton        4096 Jun  6 19:22 .
+drwxrwxrwx+ 13 anton anton        4096 Jun 10 20:09 ..
+drwxrwxrwx+  3 anton anton        4096 Jun  6 19:22 MNIST
+-rw-rw-r--+  1 anton anton 18071164978 Jun  5 20:02 openwebtext-train.bin
+-rw-rw-r--+  1 anton anton     8869212 Jun  5 20:02 openwebtext-val.bin
+--- /mnt/data0/shared/ashwin/data
+total 8
+drwxrwxrwx+  2 ashwin ashwin 4096 Oct  8  2025 .
+drwxrwxrwx+ 24 ashwin ashwin 4096 May  2 22:06 ..
+--- /mnt/data0/shared/jeremy/data
+total 12
+drwxrwxr-x+ 3 jeremy jeremy 4096 Nov 15  2024 .
+drwxrwxr-x+ 9 jeremy jeremy 4096 Feb  4  2025 ..
+drwxrwxr-x+ 3 jeremy jeremy 4096 Nov 15  2024 mnist
+
+== find cifar-10-batches / cifar-10-python (maxdepth 5 in a few dirs)
+/mnt/data0/shared/peter/datasets/_tfds_cache/downloads/extracted/TAR_GZ.cs.toronto.edu_kriz_cifar-10-binaryxKOMUKG8XzocVTfyFVq51o-fJese2Nnd2j2ymlm8od0.tar.gz/cifar-10-batches-bin
+/mnt/data0/shared/peter/datasets/_tfds_cache/downloads/cifar10
+/mnt/data0/shared/peter/datasets/_tfds_cache/cifar10
+/mnt/data0/shared/lana/mnist/data/cifar-10-batches-py
+/mnt/data0/shared/lana/mnist/data/cifar-10-batches-py/data_batch_1
+/mnt/data0/shared/lana/mnist/data/cifar-10-python.tar.gz
+/mnt/data0/shared/sam/data/cifar10
+/mnt/data0/shared/sam/data/cifar10/data_batch_1
