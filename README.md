@@ -42,9 +42,17 @@ runs the learnt backward chain from `p_prior`.
 | `scripts/train_toy.py` | 2-D experiments with a short horizon (T = 0.2), Figure 1/3-style plots |
 | `scripts/train_cifar.py` | CIFAR-10 experiment (App. J.2 configuration), sample grids, trajectory strips, sample dumps for FID |
 | `scripts/fid.py` | FID per DSB iteration (torch CPU venv `.venv-fid`, pytorch-fid Inception) |
-| `slurm/` | `run.sbatch` (1 GPU) and `cpu.sbatch` runners, toy suite |
+| `dsb/parallel.py` | data parallelism over one node with `jax.shard_map`: replicated state, sharded batches and caches, fused cache sampling |
+| `scripts/plot_results.py`, `scripts/sample.py` | summary figures / FID table; sampling and latent interpolation from a checkpoint |
+| `scripts/bench_*.py`, `scripts/audit/` | GPU benchmarks behind the multi-GPU table; the exact-regressor IPF experiments cited in the Gaussian section |
+| `tests/test_dsb.py` | CPU unit tests (schedule, closed-form marginals, targets, indices, wrappers) |
+| `slurm/` | `run.sbatch` (GPU) and `cpu.sbatch` runners, `toy_suite.sh`, `toy_sweep.sh`, `overnight.sh` (the exact commands of the reported runs) |
 
 ## Running on the cluster
+
+CIFAR-10 is expected as the python pickles in `data/cifar-10-batches-py/`; from a machine with
+internet access `python -c "from dsb.data import load_cifar10; load_cifar10('data', download=True)"`
+downloads and extracts it (170 MB).
 
 ```bash
 mkdir -p logs                                                # Slurm needs it before submission
@@ -84,8 +92,8 @@ per device, N = 50) per 400 steps included in "eff.":
 Strong scaling at a fixed global batch of 512: 6.8 it/s on 1 GPU, 12.9 on 2, 19.4 on 4.  bf16
 network evaluation (`--bf16`, master weights in f32) gives 29.6 it/s on one GPU but no gain at
 6 GPUs and is not used for the reported runs because the smallest mean increments (~0.005) are
-close to bf16 resolution.  The network is memory-bandwidth bound (≈1.7 TB/s of activation
-traffic at batch 128), which is why TF32 already runs close to its ceiling.  Nodes are connected by
+close to bf16 resolution.  The benchmark reaches only 1.3-1.8 TFLOP/s per GPU, i.e. the network
+is bound by memory traffic rather than by arithmetic.  Nodes are connected by
 10 GbE only (no InfiniBand), so multi-node training was not pursued; the extra GPUs are better
 spent on independent configurations.
 
@@ -115,8 +123,9 @@ The first iteration (classical score-based model over a short horizon) is off in
 statistic; IPF drives all three to their analytic values, as in Figure 2 of the paper.  The
 small residual gap (e.g. 0.605 vs 0.618 for the covariance) is the fixed point of DSB's
 Gaussian-kernel approximation at N = 20, not incomplete training: an IPF run with *exact*
-per-step affine regressors on the same chain converges to 0.616 / 1.009 / 0.091, and the bias
-shrinks 2-4x at N = 80.
+per-step affine regressors on the same chain (`scripts/audit/exp2_linear_ipf.py`) converges to
+mean 0.091 / variance 1.009 / covariance 0.616, and the bias shrinks 2-4x at N = 80
+(`scripts/audit/exp3_bias_vs_N.py`).
 
 ### 2. Two-dimensional toys with a short horizon (T = 0.2)
 
@@ -142,9 +151,9 @@ about 1e-3):
 
 | dataset | iteration 1 | iteration 20 |
 |---|---|---|
-| moons | 0.020 | 0.0028 |
-| circles | 0.0087 | 0.0028 |
-| S-curve | 0.093 | 0.0058 |
+| moons | 0.0203 | 0.0028 |
+| circles | 0.0088 | 0.0028 |
+| S-curve | 0.0939 | 0.0058 |
 | checkerboard | 0.0099 | 0.0013 |
 
 ### 3. CIFAR-10
@@ -154,25 +163,33 @@ towards the prior, symmetric γ schedule with γ_min = 1e-5 and γ_max = 0.1, re
 64 channels (8.95 M parameters per network, attention at 16×16), Adam 1e-4, EMA 0.999, batch 128,
 unweighted mean-matching loss.  The first (SGM-like) backward half-step uses closed-form
 reference sampling for 20 000 steps; every further half-step trains for 10 000 steps on a cache
-of 512 trajectories refreshed every 400 steps (≈ 2 passes over the cache); 12 DSB iterations.
-One A100 runs at ~15 it/s (closed-form phase) and ~12 it/s (cached phases); a full run takes
-about 6 hours.  Four runs (Slurm ids in `logs/jobids.txt`):
+of 512 trajectories refreshed every 400 steps (≈ 2 passes over the cache for N = 50); 12 DSB iterations.
+One A100 runs at ~15 it/s (closed-form phase) and 12-15 it/s (cached phases, N = 50); a full run
+takes about 6 hours.  Six runs (Slurm ids in `logs/jobids.txt`, exact commands in
+`slurm/overnight.sh` and the git history):
 
 | run | N | γ ramp | T = Σγ | reference endpoint `X_N ≈ A X_0 + S Z` |
 |---|---|---|---|---|
-| `cifar10_N50` | 50 | linear (paper) | 2.40 | A = 0.08, S = 1.01 |
-| `cifar10_N20` | 20 | linear (paper) | 0.90 | A = 0.39, S = 0.93 |
-| `cifar10_N50q` | 50 | quadratic | 1.57 | A = 0.20, S = 0.99 |
-| `cifar10_N20q` | 20 | quadratic | 0.57 | A = 0.56, S = 0.84 |
+| `cifar10_N50` | 50 | linear (paper)¹ | 2.40 | A = 0.08, S = 1.01 |
+| `cifar10_N20` | 20 | linear (paper)¹ | 0.90 | A = 0.39, S = 0.93 |
+| `cifar10_N50q` | 50 | quadratic¹ | 1.57 | A = 0.20, S = 0.99 |
+| `cifar10_N20q` | 20 | quadratic¹ | 0.57 | A = 0.56, S = 0.84 |
 | `cifar10_big_N50q` (6 GPUs, 128 ch) | 50 | quadratic | 1.70 | A = 0.17, S = 1.00 |
 | `cifar10_big_N50geo` (6 GPUs, 128 ch) | 50 | geometric | 0.63 | A = 0.52, S = 0.87 |
+
+¹ These four runs were launched before the ramp was corrected to reach γ_max (commit e12e644):
+they used u_k = 2k/N for k < N/2, so their largest step is 0.096 instead of 0.1 and their horizons
+are 2.40 / 0.90 / 1.57 / 0.57 instead of the 2.50 / 1.00 / 1.70 / 0.70 the same flags give today.
+Their `config.json` files carry `gamma_legacy_ramp: true`, so `scripts/sample.py` and the driver
+reproduce their exact schedule (`symmetric_gammas(..., legacy=True)`).
 
 The two 6-GPU runs use the full-size Nichol & Dhariwal U-Net (128 channels, 35.7M parameters
 per network), global batch 768, Adam 2e-4 with 1 000 warm-up steps, 8 000 steps per half-step
 and a cache of 3 072 trajectories.  `big_N50geo` uses the geometric ramp
 `geomspace(1e-5, 0.1, 25)` mirrored, whose horizon T = 0.63 is exactly the one quoted in
 Figure 4 of the paper for its N = 50 CelebA model (the linear ramp of Appendix J.2 gives
-T = 2.5, which contradicts that figure; the authors' code base has a geometric option).  With
+T = 2.5, which contradicts that figure, whereas a geometric ramp between the same γ_0 and γ̄
+gives exactly 0.63).  With
 T = 0.63 the reference chain leaves 52 % of the image in X_N, so the first (SGM) iteration is
 poor by construction and everything beyond it is the Schrödinger-bridge correction.  The first
 four runs (small U-Net, one GPU each) predate the multi-GPU driver and the reference-residual
@@ -186,7 +203,8 @@ and the samples of every DSB iteration carry pixel speckle of that amplitude (me
 neighbouring-pixel difference of the samples after the first iteration: 27 gray levels for
 N = 50 and 34 for N = 20 versus 14 for real images).  Later IPF iterations cannot fix this: the
 kernels have fixed variance 2γ_k and the small-step maps stay near the identity on both sides.
-Starting the ramp quadratically (`--gamma-power 2`, γ_1 ≈ 1.7e-4) removes most of the speckle
+Starting the ramp quadratically (`--gamma-power 2`, γ_1 ≈ 1.7e-4 in these runs, 1.8e-4 with the
+corrected ramp) removes most of the speckle
 (21.5 gray levels for N = 50) at the price of a shorter horizon, which is exactly the regime DSB
 is designed for.
 
@@ -195,9 +213,9 @@ is designed for.
   γ_0 = 1e-5 the omitted noise has standard deviation 0.0045.
 * The forward network is parametrised as F(k, x) = x + γ_k f(x) + net(k, x) with the reference
   drift f as a fixed residual (`ReferenceResidual`), so that the untrained network is exactly the
-  reference dynamics F^0 (Technique 5 at n = 0).  The runs in the table above predate this change
+  reference dynamics F^0 (Technique 5 at n = 0).  The four single-GPU runs predate this change
   and started the forward network from the identity map instead (their `forward_iter000.png`
-  therefore shows a plain random walk, not the reference chain).
+  therefore shows a plain random walk, not the reference chain); the 6-GPU runs use it.
 * Two typos in the paper are *not* reproduced: eq. (97) has the sign of F_k(X_k) − F_k(X_{k+1})
   flipped relative to eq. (12) and Appendix E.1, and Algorithm 3 line 11 writes √(2γ_{k+1})
   where Algorithm 1 line 8 has √(2γ_k).  The code follows (12) and Algorithm 1; an IPF run with
@@ -233,12 +251,13 @@ What the numbers show:
 
 * **IPF iterations improve every configuration**, most strongly when the horizon is short and
   the first iteration is therefore far from a valid generative model: N = 20 (T = 0.9) goes from
-  309 to 217, N = 20 quadratic (T = 0.57) from 271 to 201, while the long-horizon N = 50 run
-  (T = 2.5, already close to the SGM regime) only moves from 188 to ~150.  This is the
+  309 to 210, N = 20 quadratic (T = 0.57) from 271 to 194, while the long-horizon N = 50 run
+  (T = 2.4, already close to the SGM regime) only moves from 188 to ~150.  This is the
   qualitative behaviour of Figure 6 of the paper.
 * **The γ ramp matters more than anything else at fixed compute**: the quadratic ramp beats
-  the paper's linear ramp by 50 FID points at N = 50 (137 vs 188 after one iteration, 119 vs 157
-  after two) because of the last-step speckle explained above.
+  the paper's linear ramp by 50 FID points after the first iteration at N = 50 (137 vs 188) and
+  by about 30 points later on (119 vs 157 after two, ~118 vs ~150 after eight), because of the
+  last-step speckle explained above.
 * **Compute and model size**: the 36M-parameter network trained on 6 GPUs with 6× the batch
   reaches FID 113 after the first half-step alone, versus 137 for the 9M network on one GPU, and
   **71 after the first full DSB iteration** — the single largest improvement from one IPF
@@ -248,17 +267,17 @@ What the numbers show:
   half-step); the paper's Figure 6 shows the same saturation.
 
 Samples (64 random draws, no cherry-picking).  Top: the paper's linear ramp, N = 20, after 1 and
-11 DSB iterations — the IPF iterations turn colour noise into image-like structure, but the
-speckle from the schedule remains.  Bottom: quadratic ramp, N = 50, after 1 and 8 iterations, and
-the 36M-parameter model after its first half-step.
+12 DSB iterations — the IPF iterations turn colour noise into image-like structure, but the
+speckle from the schedule largely remains (the neighbouring-pixel metric falls by only 15-20 %).  Bottom: quadratic ramp, N = 50, after 1 and 9 iterations, and
+the 36M-parameter model at its latest evaluated iteration.
 
-| `N20` iter 1 | `N20` iter 11 |
+| `N20` iter 1 | `N20` iter 12 |
 |---|---|
-| ![](figures/cifar10_N20_samples_iter01.png) | ![](figures/cifar10_N20_samples_iter11.png) |
+| ![](figures/cifar10_N20_samples_iter01.png) | ![](figures/cifar10_N20_samples_last.png) |
 
-| `N50q` iter 1 | `N50q` iter 8 | `big_N50q` iter 1 |
+| `N50q` iter 1 | `N50q` iter 9 | `big_N50q` latest iteration |
 |---|---|---|
-| ![](figures/cifar10_N50q_samples_iter01.png) | ![](figures/cifar10_N50q_samples_iter08.png) | ![](figures/cifar10_big_N50q_samples_iter01.png) |
+| ![](figures/cifar10_N50q_samples_iter01.png) | ![](figures/cifar10_N50q_samples_last.png) | ![](figures/cifar10_big_N50q_samples_last.png) |
 
 Trajectory strips (`figures/*_trajectory_*.png`, rows k = N, 3N/4, N/2, N/4, 0) show the backward
 chain from Gaussian noise to a sample, and `figures/*_forward_*.png` the learnt forward chain

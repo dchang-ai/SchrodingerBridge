@@ -30,6 +30,7 @@ class DSBConfig:
     gamma_min: float = 1e-5
     gamma_max: float = 1e-1
     gamma_power: float = 1.0            # ramp exponent of the symmetric schedule (1 = paper)
+    gamma_legacy_ramp: bool = False     # pre-2026-09-15 ramp (gamma_max not reached); only for the first four CIFAR runs
     gamma: float = 1e-2                 # used by the constant schedule
     prior_mean: float = 0.0
     prior_std: float = 1.0
@@ -58,7 +59,7 @@ class DSBConfig:
 
     def reference(self) -> OUReference:
         if self.gamma_schedule == "symmetric":
-            g = symmetric_gammas(self.num_steps, self.gamma_min, self.gamma_max, self.gamma_power)
+            g = symmetric_gammas(self.num_steps, self.gamma_min, self.gamma_max, self.gamma_power, self.gamma_legacy_ramp)
         elif self.gamma_schedule == "geometric":
             g = geometric_gammas(self.num_steps, self.gamma_min, self.gamma_max)
         elif self.gamma_schedule == "constant":
@@ -147,8 +148,8 @@ def run_dsb(
             os.path.join(ckdir, meta["file"]),
             Nets(f_state.params, f_state.ema_params, b_state.params, b_state.ema_params),
         )
-        f_state = f_state._replace(params=nets.f_params, ema_params=nets.f_ema)
-        b_state = b_state._replace(params=nets.b_params, ema_params=nets.b_ema)
+        f_state = f_state._replace(params=nets.f_params, ema_params=nets.f_ema, step=jnp.asarray(meta.get("f_step", 0), jnp.int32))
+        b_state = b_state._replace(params=nets.b_params, ema_params=nets.b_ema, step=jnp.asarray(meta.get("b_step", 0), jnp.int32))
         if meta["phase"] == "backward":
             start_n, start_phase = meta["n"], "forward"
         else:
@@ -163,7 +164,7 @@ def run_dsb(
             Nets(f_state.params, f_state.ema_params, b_state.params, b_state.ema_params),
         )
         with open(latest, "w") as fh:
-            json.dump({"n": n, "phase": phase, "file": fname}, fh)
+            json.dump({"n": n, "phase": phase, "file": fname, "f_step": int(f_state.step), "b_step": int(b_state.step)}, fh)
 
     # ---- jitted pieces ------------------------------------------------------------
     # the dataset is passed as an argument (not closed over) so that it is not baked into
@@ -301,8 +302,10 @@ def run_dsb_parallel(
         like = Nets(dp.unreplicate(f_state.params), dp.unreplicate(f_state.ema_params),
                     dp.unreplicate(b_state.params), dp.unreplicate(b_state.ema_params))
         nets = eqx.tree_deserialise_leaves(os.path.join(ckdir, meta["file"]), like)
-        f_state = f_state._replace(params=dp.replicate(nets.f_params), ema_params=dp.replicate(nets.f_ema))
-        b_state = b_state._replace(params=dp.replicate(nets.b_params), ema_params=dp.replicate(nets.b_ema))
+        f_state = f_state._replace(params=dp.replicate(nets.f_params), ema_params=dp.replicate(nets.f_ema),
+                                   step=dp.replicate(jnp.asarray(meta.get("f_step", 0), jnp.int32)))
+        b_state = b_state._replace(params=dp.replicate(nets.b_params), ema_params=dp.replicate(nets.b_ema),
+                                   step=dp.replicate(jnp.asarray(meta.get("b_step", 0), jnp.int32)))
         if meta["phase"] == "backward":
             start_n, start_phase = meta["n"], "forward"
         else:
@@ -316,7 +319,7 @@ def run_dsb_parallel(
                     dp.unreplicate(b_state.params), dp.unreplicate(b_state.ema_params))
         eqx.tree_serialise_leaves(os.path.join(ckdir, fname), nets)
         with open(latest, "w") as fh:
-            json.dump({"n": n, "phase": phase, "file": fname}, fh)
+            json.dump({"n": n, "phase": phase, "file": fname, "f_step": int(f_state.step), "b_step": int(b_state.step)}, fh)
 
     # ---- jitted, sharded pieces -------------------------------------------------------
     reference_batch = par.make_reference_batch(dp, ref, sample_data, cfg.batch_size, sample_args=(data,))

@@ -122,3 +122,22 @@ def test_reference_residual_untrained_equals_reference():
 def test_gamma_max_reached():
     g = symmetric_gammas(50, 1e-5, 1e-1)
     assert np.isclose(g.max(), 1e-1) and g[0] == np.float32(1e-5) and np.allclose(g, g[::-1])
+
+
+def test_backward_step_uses_gamma_of_transition_asymmetric_schedule():
+    """With an asymmetric schedule, the noise of the backward step k -> k-1 must use gammas[k-1]."""
+    gammas = jnp.array([0.001, 0.01, 0.1, 1.0])
+    ref = OUReference(np.asarray(gammas), alpha=0.0)
+    net = RefNet(ref)  # zero drift: pure noise, so the std of each step is sqrt(2 gamma)
+    xN = jnp.zeros((200000, 1))
+    c = ipf.simulate(net, xN, gammas, jax.random.PRNGKey(0), forward=False)
+    # xs[i] = X_{N-1-i}: the step producing X_3 (from X_4) uses gammas[3] = 1.0, X_0 (from X_1) uses gammas[0]
+    stds = [float(jnp.std(c.xs[i] - (xN if i == 0 else c.xs[i - 1]))) for i in range(4)]
+    assert np.allclose(stds, np.sqrt(2 * np.array([1.0, 0.1, 0.01, 0.001])), rtol=0.05), stds
+
+
+def test_legacy_ramp_matches_first_runs():
+    g = symmetric_gammas(50, 1e-5, 1e-1, legacy=True)
+    assert np.isclose(g.sum(), 2.400, atol=2e-3) and g.max() < 0.1
+    g2 = symmetric_gammas(50, 1e-5, 1e-1)
+    assert np.isclose(g2.sum(), 2.500, atol=2e-3)

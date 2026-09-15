@@ -23,8 +23,11 @@ from dsb.train import DSBConfig, Nets, output_scales
 from dsb.utils import image_grid, save_png
 
 
-def load(rundir: str, ckpt: str | None, ch: int = 64):
+def load(rundir: str, ckpt: str | None, ch: int | None = None):
     cfg = DSBConfig(**json.load(open(os.path.join(rundir, "config.json"))))
+    model_json = os.path.join(rundir, "model.json")
+    if ch is None:
+        ch = json.load(open(model_json))["ch"] if os.path.exists(model_json) else 64
     ckdir = os.path.join(rundir, "ckpt")
     if ckpt is None:
         ckpt = json.load(open(os.path.join(ckdir, "latest.json")))["file"]
@@ -46,7 +49,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("rundir")
     p.add_argument("--ckpt", default=None)
-    p.add_argument("--ch", type=int, default=64)
+    p.add_argument("--ch", type=int, default=None, help="U-Net base channels (default: from <rundir>/model.json, else 64)")
     p.add_argument("--n", type=int, default=64)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--interpolate", action="store_true", help="latent interpolation between two prior samples (Fig. 13)")

@@ -25,7 +25,8 @@ import jax.numpy as jnp
 import numpy as np
 
 
-def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1, power: float = 1.0) -> np.ndarray:
+def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1, power: float = 1.0,
+                     legacy: bool = False) -> np.ndarray:
     """Time-reversal invariant schedule of Appendix J.2.
 
     gamma_k = gamma_min + u_k^power (gamma_max - gamma_min) with u_k = k/(N/2 - 1) for
@@ -41,7 +42,13 @@ def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float =
     n = num_steps
     if n % 2 != 0:
         raise ValueError("num_steps must be even for the symmetric schedule")
-    u = np.linspace(0.0, 1.0, n // 2)
+    if legacy:
+        # ramp used by the first four CIFAR-10 runs (runs/cifar10_N50, N20, N50q, N20q): u_k = 2k/N for
+        # k < N/2, so gamma_max is never reached (max 0.096 for N = 50); kept so that their checkpoints
+        # can be sampled with the step sizes they were trained with.
+        u = 2.0 * np.arange(n // 2) / n
+    else:
+        u = np.linspace(0.0, 1.0, n // 2)
     half = gamma_min + u**power * (gamma_max - gamma_min)
     return np.concatenate([half, half[::-1]]).astype(np.float32)
 

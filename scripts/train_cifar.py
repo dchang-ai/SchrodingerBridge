@@ -83,6 +83,8 @@ def main():
                     attn_resolutions=(16,), image_size=32, dropout=args.dropout, key=key)
 
     print("params per network:", count_params(make_net(jax.random.PRNGKey(0))), flush=True)
+    with open(os.path.join(args.outdir, "model.json"), "w") as fh:
+        json.dump(dict(ch=args.ch, dropout=args.dropout, bf16=args.bf16, single=args.single, argv=sys.argv[1:]), fh, indent=2)
     grid = image_grid(np.asarray(images[:64]))
     save_png(os.path.join(args.outdir, "data.png"), grid)
 

@@ -1,13 +1,20 @@
+# Slurm job ids of the reported runs (logs/<jobname>_<id>.out)
+smoke_cifar 524170
+gauss_d5 524136
+toys(gauss_d50,moons,scurve,circles,checkerboard-old) 524137
+toy_checkerboard 524389
 cifar_N50 524204
 cifar_N20 524205
 cifar_N50q 524387
 cifar_N20q 524388
-toy_cb 524389
-fidloop 524813
 cifar_big_q 524926
-fidloop2 524928
-cifar_big_geo 524929
-toy_sweep 525216
+cifar_big_geo(6gpu, stopped at iter 2) 524929
+cifar_big_geo(resumed, 2gpu) 525234
 cifar_big_N100q 525233
-cifar_big_geo(resume,2gpu) 525234
+fid 524615
+fidloop 524813
+fidloop2 524928
 fidloop3 525235
+toy_sweep 525216
+bench1 524712
+bench6 524747

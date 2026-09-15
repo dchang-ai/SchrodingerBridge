@@ -307,6 +307,3 @@ def init_train_state(dp: DataParallel, net: eqx.Module, optimizer) -> TrainState
     """Replicated :class:`TrainState` (single-copy semantics, ``ndev`` physical copies)."""
     return dp.replicate(ipf.init_train_state(net, optimizer))
 
-
-def reset_optimizer(dp: DataParallel, state: TrainState, optimizer) -> TrainState:
-    return state._replace(opt_state=dp.replicate(optimizer.init(state.params)), step=dp.replicate(jnp.zeros((), jnp.int32)))

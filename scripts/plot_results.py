@@ -78,6 +78,7 @@ def toy_figure():
         if pngs:
             shutil.copy(pngs[0], os.path.join(FIGS, f"toy_{name}_iter01.png"))
             shutil.copy(pngs[-1], os.path.join(FIGS, f"toy_{name}_iter{len(pngs):02d}.png"))
+            shutil.copy(pngs[-1], os.path.join(FIGS, f"toy_{name}_last.png"))
 
 
 def cifar_figures():
@@ -110,11 +111,12 @@ def cifar_figures():
         name = os.path.basename(d)
         for kind in ("samples", "trajectory", "forward"):
             pngs = sorted(glob.glob(os.path.join(d, f"{kind}_iter*.png")))
-            for stale in glob.glob(os.path.join(FIGS, f"{name}_{kind}_iter*.png")):
+            for stale in glob.glob(os.path.join(FIGS, f"{name}_{kind}_iter[0-9]*.png")):
                 os.remove(stale)
             if pngs:
                 shutil.copy(pngs[0], os.path.join(FIGS, f"{name}_{kind}_iter01.png"))
                 shutil.copy(pngs[-1], os.path.join(FIGS, f"{name}_{kind}_iter{len(pngs):02d}.png"))
+                shutil.copy(pngs[-1], os.path.join(FIGS, f"{name}_{kind}_last.png"))  # stable name for the README
         if os.path.exists(os.path.join(d, "data.png")):
             shutil.copy(os.path.join(d, "data.png"), os.path.join(FIGS, "cifar10_data.png"))
 
