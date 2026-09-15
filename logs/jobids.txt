@@ -18,3 +18,5 @@ fidloop3 525235
 toy_sweep 525216
 bench1 524712
 bench6 524747
+cifar_big_geo(resumed, 8gpu lambda-hyperplane0) 528695
+fidloop4 528696
