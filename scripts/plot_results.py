@@ -73,6 +73,8 @@ def toy_figure():
     # first vs last iteration panels for each toy
     for name in rows:
         pngs = sorted(glob.glob(os.path.join(RUNS, f"toy_{name}", "iter*.png")))
+        for stale in glob.glob(os.path.join(FIGS, f"toy_{name}_iter*.png")):
+            os.remove(stale)
         if pngs:
             shutil.copy(pngs[0], os.path.join(FIGS, f"toy_{name}_iter01.png"))
             shutil.copy(pngs[-1], os.path.join(FIGS, f"toy_{name}_iter{len(pngs):02d}.png"))
@@ -108,6 +110,8 @@ def cifar_figures():
         name = os.path.basename(d)
         for kind in ("samples", "trajectory", "forward"):
             pngs = sorted(glob.glob(os.path.join(d, f"{kind}_iter*.png")))
+            for stale in glob.glob(os.path.join(FIGS, f"{name}_{kind}_iter*.png")):
+                os.remove(stale)
             if pngs:
                 shutil.copy(pngs[0], os.path.join(FIGS, f"{name}_{kind}_iter01.png"))
                 shutil.copy(pngs[-1], os.path.join(FIGS, f"{name}_{kind}_iter{len(pngs):02d}.png"))
