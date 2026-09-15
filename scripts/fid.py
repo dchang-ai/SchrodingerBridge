@@ -15,8 +15,21 @@ import time
 
 import numpy as np
 import torch
-from pytorch_fid.fid_score import calculate_frechet_distance
 from pytorch_fid.inception import InceptionV3
+from scipy import linalg
+
+
+def frechet_distance(mu1, sigma1, mu2, sigma2, eps: float = 1e-6) -> float:
+    """||mu1 - mu2||^2 + Tr(S1 + S2 - 2 (S1 S2)^{1/2}) (Heusel et al. 2017).
+    (pytorch_fid's version passes ``disp=`` to scipy.linalg.sqrtm, removed in SciPy 1.18.)"""
+    diff = mu1 - mu2
+    covmean = linalg.sqrtm(sigma1.dot(sigma2))
+    if not np.isfinite(covmean).all():
+        offset = np.eye(sigma1.shape[0]) * eps
+        covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+    if np.iscomplexobj(covmean):
+        covmean = covmean.real
+    return float(diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * np.trace(covmean))
 
 
 @torch.no_grad()
@@ -71,12 +84,19 @@ def main():
         n = int(re.search(r"gen_iter(\d+)", f).group(1))
         if n in done:
             continue
-        imgs = np.load(f)["images"]
-        mu, sig = stats(activations(model, imgs))
-        fid = float(calculate_frechet_distance(mu, sig, mu_r, sig_r))
-        print(f"iter {n}: FID = {fid:.2f}  ({len(imgs)} samples)", flush=True)
+        stats_file = f.replace(".npz", "_fidstats.npz")
+        if os.path.exists(stats_file):
+            d = np.load(stats_file)
+            mu, sig, n_img = d["mu"], d["sigma"], int(d["n"])
+        else:
+            imgs = np.load(f)["images"]
+            mu, sig = stats(activations(model, imgs))
+            n_img = len(imgs)
+            np.savez(stats_file, mu=mu, sigma=sig, n=n_img)
+        fid = frechet_distance(mu, sig, mu_r, sig_r)
+        print(f"iter {n}: FID = {fid:.2f}  ({n_img} samples)", flush=True)
         with open(out_path, "a") as fh:
-            fh.write(json.dumps({"n": n, "fid": fid, "num_samples": int(len(imgs))}) + "\n")
+            fh.write(json.dumps({"n": n, "fid": fid, "num_samples": n_img}) + "\n")
 
 
 if __name__ == "__main__":
