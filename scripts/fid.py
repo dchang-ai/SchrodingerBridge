@@ -11,6 +11,7 @@ import json
 import os
 import pickle
 import re
+import time
 
 import numpy as np
 import torch
@@ -21,9 +22,12 @@ from pytorch_fid.inception import InceptionV3
 @torch.no_grad()
 def activations(model, images_uint8: np.ndarray, batch_size: int = 100) -> np.ndarray:
     out = []
+    t0 = time.time()
     for i in range(0, len(images_uint8), batch_size):
         x = torch.from_numpy(images_uint8[i : i + batch_size]).float() / 255.0  # (b,3,32,32) in [0,1]
         out.append(model(x)[0].squeeze(-1).squeeze(-1).cpu().numpy())
+        if (i // batch_size) % 20 == 0:
+            print(f"  {i + len(x)}/{len(images_uint8)} images, {time.time() - t0:.0f}s", flush=True)
     return np.concatenate(out)
 
 
