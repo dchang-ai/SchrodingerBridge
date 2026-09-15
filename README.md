@@ -115,4 +115,33 @@ about 1e-3):
 
 ### 3. CIFAR-10
 
-*(in progress — see below)*
+Configuration (Appendix J.2, CelebA settings, d = 32·32·3 = 3072): `p_prior = N(0, I)`, OU reference
+towards the prior, symmetric γ schedule with γ_min = 1e-5 and γ_max = 0.1, reduced U-Net with
+64 channels (8.95 M parameters per network, attention at 16×16), Adam 1e-4, EMA 0.999, batch 128,
+unweighted mean-matching loss.  The first (SGM-like) backward half-step uses closed-form
+reference sampling for 20 000 steps; every further half-step trains for 10 000 steps on a cache
+of 512 trajectories refreshed every 400 steps (≈ 2 passes over the cache); 12 DSB iterations.
+One A100 runs at ~15 it/s (closed-form phase) and ~12 it/s (cached phases); a full run takes
+about 6 hours.  Four runs (Slurm ids in `logs/jobids.txt`):
+
+| run | N | γ ramp | T = Σγ | reference endpoint `X_N ≈ A X_0 + S Z` |
+|---|---|---|---|---|
+| `cifar10_N50` | 50 | linear (paper) | 2.40 | A = 0.08, S = 1.01 |
+| `cifar10_N20` | 20 | linear (paper) | 0.90 | A = 0.39, S = 0.93 |
+| `cifar10_N50q` | 50 | quadratic | 1.57 | A = 0.20, S = 0.99 |
+| `cifar10_N20q` | 20 | quadratic | 0.57 | A = 0.56, S = 0.84 |
+
+**A finding about the paper's schedule.**  With the linear ramp the two smallest steps are
+γ_0 = 1e-5 and γ_1 ≈ 4e-3 (N = 50).  In the backward chain the noise `sqrt(2γ_1) ≈ 0.09`
+injected at the second-to-last step is 20× larger than the noise level (`sqrt(2γ_0) ≈ 0.0045`)
+that the near-identity last mean map B(1, ·) ever sees during training, so it is never removed
+and the samples of every DSB iteration carry pixel speckle of that amplitude (mean absolute
+neighbouring-pixel difference of the samples after the first iteration: 27 gray levels for
+N = 50 and 34 for N = 20 versus 14 for real images).  Later IPF iterations cannot fix this: the
+kernels have fixed variance 2γ_k and the small-step maps stay near the identity on both sides.
+Starting the ramp quadratically (`--gamma-power 2`, γ_1 ≈ 1.7e-4) removes most of the speckle
+(21.5 gray levels for N = 50) at the price of a shorter horizon, which is exactly the regime DSB
+is designed for.
+
+*(FID per DSB iteration, sample grids and the forward-endpoint diagnostics follow once the runs
+complete.)*
