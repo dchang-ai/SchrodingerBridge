@@ -115,8 +115,26 @@ def cifar_figures():
             shutil.copy(os.path.join(d, "data.png"), os.path.join(FIGS, "cifar10_data.png"))
 
 
+def fid_table(runs=None) -> str:
+    """Markdown table of FID per DSB iteration for the CIFAR-10 runs (also written to figures/fid_table.md)."""
+    dirs = sorted(glob.glob(os.path.join(RUNS, "cifar10_*"))) if runs is None else [os.path.join(RUNS, r) for r in runs]
+    rows = {os.path.basename(d): {r["n"] + 1: r["fid"] for r in read_jsonl(os.path.join(d, "fid.jsonl"))} for d in dirs}
+    rows = {k: v for k, v in rows.items() if v}
+    if not rows:
+        return ""
+    names = list(rows)
+    iters = sorted({i for v in rows.values() for i in v})
+    out = "| DSB iteration | " + " | ".join(n.replace("cifar10_", "") for n in names) + " |\n|---|" + "---|" * len(names) + "\n"
+    for i in iters:
+        out += f"| {i} | " + " | ".join(f"{rows[n][i]:.1f}" if i in rows[n] else "" for n in names) + " |\n"
+    with open(os.path.join(FIGS, "fid_table.md"), "w") as fh:
+        fh.write(out)
+    return out
+
+
 if __name__ == "__main__":
     gaussian_figure()
     toy_figure()
     cifar_figures()
+    print(fid_table())
     print("figures:", sorted(os.listdir(FIGS)))
