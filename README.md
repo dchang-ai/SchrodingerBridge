@@ -82,7 +82,11 @@ Estimated on 20 000 generated pairs (first coordinate; the analytic values are 0
 | d = 50: mean / var / cov | 0.018 / 1.237 / 0.693 | 0.078 / 1.074 / 0.632 |
 
 The first iteration (classical score-based model over a short horizon) is off in every
-statistic; IPF drives all three to their analytic values, as in Figure 2 of the paper.
+statistic; IPF drives all three to their analytic values, as in Figure 2 of the paper.  The
+small residual gap (e.g. 0.605 vs 0.618 for the covariance) is the fixed point of DSB's
+Gaussian-kernel approximation at N = 20, not incomplete training: an IPF run with *exact*
+per-step affine regressors on the same chain converges to 0.616 / 1.009 / 0.091, and the bias
+shrinks 2-4x at N = 80.
 
 ### 2. Two-dimensional toys with a short horizon (T = 0.2)
 
@@ -142,6 +146,23 @@ kernels have fixed variance 2γ_k and the small-step maps stay near the identity
 Starting the ramp quadratically (`--gamma-power 2`, γ_1 ≈ 1.7e-4) removes most of the speckle
 (21.5 gray levels for N = 50) at the price of a shorter horizon, which is exactly the regime DSB
 is designed for.
+
+**Implementation notes.**
+* Sampling uses the noise-free last step X_0 = B(1, X_1) (as the authors' code does); with
+  γ_0 = 1e-5 the omitted noise has standard deviation 0.0045.
+* The forward network is parametrised as F(k, x) = x + γ_k f(x) + net(k, x) with the reference
+  drift f as a fixed residual (`ReferenceResidual`), so that the untrained network is exactly the
+  reference dynamics F^0 (Technique 5 at n = 0).  The runs in the table above predate this change
+  and started the forward network from the identity map instead (their `forward_iter000.png`
+  therefore shows a plain random walk, not the reference chain).
+* Two typos in the paper are *not* reproduced: eq. (97) has the sign of F_k(X_k) − F_k(X_{k+1})
+  flipped relative to eq. (12) and Appendix E.1, and Algorithm 3 line 11 writes √(2γ_{k+1})
+  where Algorithm 1 line 8 has √(2γ_k).  The code follows (12) and Algorithm 1; an IPF run with
+  exact regressors on the code's cached targets converges to the analytic Gaussian bridge, and
+  diverges if the sign is flipped.
+* FID uses 5 000 generated samples against the statistics of the 50 000 training images
+  (pytorch-fid Inception weights).  With 5 000 samples FID is biased upwards by roughly 10 points
+  relative to the usual 50k/50k protocol, so values are comparable within this repository only.
 
 *(FID per DSB iteration, sample grids and the forward-endpoint diagnostics follow once the runs
 complete.)*
