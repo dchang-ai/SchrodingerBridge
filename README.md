@@ -266,18 +266,30 @@ the implementation notes).
 
 ![fwd](figures/cifar_forward_endpoint.png)
 
-### Status
+### Status and overnight plan
 
-At the time of writing (2026-09-15 03:40 UTC) the four single-GPU runs are in their last
-iterations and the two 6-GPU runs (`cifar10_big_N50q`, `cifar10_big_N50geo`) are at iteration 2
-of 12; they checkpoint after every half-step and finish in roughly five more hours.  Two CPU jobs
-(`fidloop`, `fidloop2`) compute the FID of every new sample dump.  To refresh the tables and
-figures afterwards:
+Snapshot at 2026-09-15 04:15 UTC.  Finished: the four single-GPU runs (`N20` ran all 12
+iterations; `N50`, `N50q`, `N20q` were stopped after 10, 8 and 8 iterations once their FID curves
+had flattened, to free GPUs).  Running overnight (`slurm/overnight.sh`, job ids in
+`logs/jobids.txt`):
+
+| run | GPUs | what it tests | expected by morning |
+|---|---|---|---|
+| `cifar10_big_N50q` | 6 | 36M-param U-Net, N = 50 quadratic ramp, 12 iterations | finishes ≈ 09:00 UTC |
+| `cifar10_big_N100q` | 6 | same network, **N = 100** (γ_max 0.05, T = 1.68), 30k-step first half-step, then 10k per half-step | ≈ 6-7 iterations |
+| `cifar10_big_N50geo` | 2 | the paper's T = 0.63 horizon (geometric ramp); resumed from its iteration-2 checkpoint at reduced speed | ≈ 5 iterations |
+| `toy_sweep` (CPU) | 0 | 2-D toys: longer training (B), finer discretisation N = 50 (C), wider prior (D) — see `slurm/toy_sweep.sh` | done in 1-2 h |
+
+Rationale: the big quadratic run is already better after one half-step (FID 113) than any
+small run gets; the remaining error is dominated by the coarse N = 50 discretisation and the
+short first (SGM) phase, so the extra GPUs go to N = 100 with a longer first half-step rather
+than to more IPF iterations, whose gains flatten after 5-8 iterations at fixed budget.  Three CPU
+jobs (`fidloop*`) compute the FID of every new sample dump.  To refresh tables and figures:
 
 ```bash
-.venv/bin/python scripts/plot_results.py        # figures/, figures/fid_table.md
-.venv/bin/python scripts/sample.py runs/cifar10_big_N50q --ch 128 --n 64   # samples from the latest checkpoint
-.venv/bin/python scripts/sample.py runs/cifar10_big_N50q --ch 128 --interpolate  # latent interpolation (Fig. 13)
+.venv/bin/python scripts/plot_results.py        # figures/, figures/fid_table.md, toy figures
+.venv/bin/python scripts/sample.py runs/cifar10_big_N100q --ch 128 --n 64   # samples from the latest checkpoint
+.venv/bin/python scripts/sample.py runs/cifar10_big_N100q --ch 128 --interpolate  # latent interpolation (Fig. 13)
 ```
 
 Unit tests: `python -m pytest tests -q` (CPU, ~10 s).

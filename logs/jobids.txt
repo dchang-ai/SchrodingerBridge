@@ -7,6 +7,7 @@ fidloop 524813
 cifar_big_q 524926
 fidloop2 524928
 cifar_big_geo 524929
-cifar_big_N100q 525214
-fidloop3 525215
 toy_sweep 525216
+cifar_big_N100q 525233
+cifar_big_geo(resume,2gpu) 525234
+fidloop3 525235
