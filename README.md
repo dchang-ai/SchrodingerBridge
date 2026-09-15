@@ -164,5 +164,16 @@ is designed for.
   (pytorch-fid Inception weights).  With 5 000 samples FID is biased upwards by roughly 10 points
   relative to the usual 50k/50k protocol, so values are comparable within this repository only.
 
-*(FID per DSB iteration, sample grids and the forward-endpoint diagnostics follow once the runs
-complete.)*
+**FID (5k samples) per DSB iteration** (runs in progress; the table is refreshed as evaluations arrive; iteration 1 is the classical SGM obtained from the first backward half-step):
+
+| DSB iteration | N50 | N20 | N50q | N20q |
+|---|---|---|---|---|
+| 1 | 188.5 | 309.0 | 137.3 | 271.0 |
+| 2 | 157.0 | 280.1 | 119.4 | 243.9 |
+| 3 | 155.7 | 262.2 | 124.2 | 233.3 |
+| 4 | 154.5 | 259.1 | 125.2 | 232.2 |
+| 5 | 153.8 | 243.1 | 116.0 | 215.6 |
+| 6 | 151.4 | 236.8 |  | 214.6 |
+| 7 | 153.1 | 228.8 |  |  |
+| 8 | 150.6 | 229.0 |  |  |
+
