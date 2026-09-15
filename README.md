@@ -59,6 +59,36 @@ equinox 0.13 + optax 0.2), relocates `$HOME` (not mounted on compute nodes), dis
 GPU-memory preallocation and pins CPU threads to the allocation.  Runs are resumable: the
 driver reloads the latest half-step checkpoint in `<outdir>/ckpt/`.
 
+## Multi-GPU training
+
+`dsb/parallel.py` implements data parallelism over the GPUs of one node with `jax.shard_map`:
+parameters, Adam and EMA state are replicated, every device works on `batch/ndev` samples and
+`cache_size/ndev` trajectories of the cache, gradients are averaged with one all-reduce per step
+(the flattened 9M/36M-parameter gradient), and cache sampling is fused into the jitted train
+step.  `run_dsb_parallel` in `dsb/train.py` is the corresponding driver (default in
+`scripts/train_cifar.py`; `--single` selects the plain single-device driver `run_dsb`, which is
+kept as the readable reference implementation).  Checkpoints are single-copy and interchangeable
+between the two drivers.  Measured on A100-80GB (`scripts/bench_parallel.py`, `logs/bench*.out`),
+U-Net with 64 channels unless noted, 128 samples per device, one cache refresh (512 trajectories
+per device, N = 50) per 400 steps included in "eff.":
+
+| GPUs | global batch | step ms | it/s | samples/s | eff. samples/s |
+|---|---|---|---|---|---|
+| 1 (`run_dsb` loop) | 128 | 65 | 15.3 | 1960 | ≈1700 |
+| 1 (fused shard_map) | 128 | 42.6 | 23.5 | 3004 | 2380 |
+| 2 | 256 | 42.8 | 23.4 | 5976 | 4762 |
+| 4 | 512 | 55.0 | 18.2 | 9317 | 7770 |
+| 6 | 768 | 68.3 | 14.6 | 11242 | 9686 |
+| 6, 128 channels (36M params) | 768 | 90.8 | 11.0 | 8460 | 6691 |
+
+Strong scaling at a fixed global batch of 512: 6.8 it/s on 1 GPU, 12.9 on 2, 19.4 on 4.  bf16
+network evaluation (`--bf16`, master weights in f32) gives 29.6 it/s on one GPU but no gain at
+6 GPUs and is not used for the reported runs because the smallest mean increments (~0.005) are
+close to bf16 resolution.  The network is memory-bandwidth bound (≈1.7 TB/s of activation
+traffic at batch 128), which is why TF32 already runs close to its ceiling.  Nodes are connected by
+10 GbE only (no InfiniBand), so multi-node training was not pursued; the extra GPUs are better
+spent on independent configurations.
+
 ## Results
 
 All runs below were produced by the scripts in this repository on one A100 each
@@ -134,6 +164,19 @@ about 6 hours.  Four runs (Slurm ids in `logs/jobids.txt`):
 | `cifar10_N20` | 20 | linear (paper) | 0.90 | A = 0.39, S = 0.93 |
 | `cifar10_N50q` | 50 | quadratic | 1.57 | A = 0.20, S = 0.99 |
 | `cifar10_N20q` | 20 | quadratic | 0.57 | A = 0.56, S = 0.84 |
+| `cifar10_big_N50q` (6 GPUs, 128 ch) | 50 | quadratic | 1.70 | A = 0.17, S = 1.00 |
+| `cifar10_big_N50geo` (6 GPUs, 128 ch) | 50 | geometric | 0.63 | A = 0.52, S = 0.87 |
+
+The two 6-GPU runs use the full-size Nichol & Dhariwal U-Net (128 channels, 35.7M parameters
+per network), global batch 768, Adam 2e-4 with 1 000 warm-up steps, 8 000 steps per half-step
+and a cache of 3 072 trajectories.  `big_N50geo` uses the geometric ramp
+`geomspace(1e-5, 0.1, 25)` mirrored, whose horizon T = 0.63 is exactly the one quoted in
+Figure 4 of the paper for its N = 50 CelebA model (the linear ramp of Appendix J.2 gives
+T = 2.5, which contradicts that figure; the authors' code base has a geometric option).  With
+T = 0.63 the reference chain leaves 52 % of the image in X_N, so the first (SGM) iteration is
+poor by construction and everything beyond it is the Schrödinger-bridge correction.  The first
+four runs (small U-Net, one GPU each) predate the multi-GPU driver and the reference-residual
+parametrisation of the forward network; the two big runs use both.
 
 **A finding about the paper's schedule.**  With the linear ramp the two smallest steps are
 γ_0 = 1e-5 and γ_1 ≈ 4e-3 (N = 50).  In the backward chain the noise `sqrt(2γ_1) ≈ 0.09`
