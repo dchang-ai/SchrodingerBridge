@@ -7,3 +7,6 @@ fidloop 524813
 cifar_big_q 524926
 fidloop2 524928
 cifar_big_geo 524929
+cifar_big_N100q 525214
+fidloop3 525215
+toy_sweep 525216

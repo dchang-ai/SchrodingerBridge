@@ -39,6 +39,9 @@ def main():
     p.add_argument("--batch", type=int, default=512)
     p.add_argument("--hidden", type=int, default=128)
     p.add_argument("--prior-std", type=float, default=None, help="default: std of the data (Technique 4)")
+    p.add_argument("--prior-scale", type=float, default=1.0, help="multiply the (data-derived) prior std by this factor")
+    p.add_argument("--cache-size", type=int, default=10_000)
+    p.add_argument("--cache-refresh", type=int, default=1000)
     p.add_argument("--outdir", default=None)
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
@@ -49,12 +52,12 @@ def main():
     pool = jnp.asarray(toy_dataset(args.dataset, 100_000, rng))
     data_mean = float(np.asarray(pool).mean())
     data_std = float(np.asarray(pool).std())
-    prior_std = args.prior_std or data_std
+    prior_std = args.prior_std or data_std * args.prior_scale
     cfg = DSBConfig(
         num_steps=args.num_steps, gamma_schedule="constant", gamma=args.gamma,
         prior_mean=data_mean, prior_std=prior_std,        # OU reference with alpha = 1/sigma^2
         num_dsb_iters=args.iters, train_steps=args.steps, batch_size=args.batch,
-        cache_size=10_000, cache_refresh=1000, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=1000,
+        cache_size=args.cache_size, cache_refresh=args.cache_refresh, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=1000,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
