@@ -215,16 +215,17 @@ were still training when this snapshot was taken (see *Status* below).
 | DSB iteration | N20 | N20q | N50 | N50q | big_N50geo | big_N50q |
 |---|---|---|---|---|---|---|
 | 1 | 309.0 | 271.0 | 188.5 | 137.3 | 185.9 | 113.4 |
-| 2 | 280.1 | 243.9 | 157.0 | 119.4 |  |  |
+| 2 | 280.1 | 243.9 | 157.0 | 119.4 | 153.6 | 70.8 |
 | 3 | 262.2 | 233.3 | 155.7 | 124.2 |  |  |
 | 4 | 259.1 | 232.2 | 154.5 | 125.2 |  |  |
 | 5 | 243.1 | 215.6 | 153.8 | 116.0 |  |  |
 | 6 | 236.8 | 214.6 | 151.4 | 119.8 |  |  |
 | 7 | 228.8 | 205.1 | 153.1 | 118.9 |  |  |
-| 8 | 229.0 | 200.9 | 150.6 |  |  |  |
-| 9 | 222.9 |  | 150.3 |  |  |  |
+| 8 | 229.0 | 200.9 | 150.6 | 120.2 |  |  |
+| 9 | 222.9 | 194.0 | 150.3 |  |  |  |
 | 10 | 225.0 |  | 155.2 |  |  |  |
 | 11 | 217.0 |  |  |  |  |  |
+| 12 | 210.2 |  |  |  |  |  |
 
 ![fid](figures/cifar_fid.png)
 
@@ -239,7 +240,10 @@ What the numbers show:
   the paper's linear ramp by 50 FID points at N = 50 (137 vs 188 after one iteration, 119 vs 157
   after two) because of the last-step speckle explained above.
 * **Compute and model size**: the 36M-parameter network trained on 6 GPUs with 6× the batch
-  reaches FID 113 after the first half-step alone, versus 137 for the 9M network on one GPU.
+  reaches FID 113 after the first half-step alone, versus 137 for the 9M network on one GPU, and
+  **71 after the first full DSB iteration** — the single largest improvement from one IPF
+  iteration in all runs, i.e. the bridge correction pays off most when the networks have the
+  capacity to represent it.
 * The gain per iteration flattens after 5-8 iterations at this training budget (8-10k steps per
   half-step); the paper's Figure 6 shows the same saturation.
 
