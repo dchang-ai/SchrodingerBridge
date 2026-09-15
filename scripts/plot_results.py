@@ -121,6 +121,31 @@ def cifar_figures():
             shutil.copy(os.path.join(d, "data.png"), os.path.join(FIGS, "cifar10_data.png"))
 
 
+SWEEP = {"A": ("toy_{}", "N=20, γ=0.01, 128 hidden, 10k steps/half-step, 20 iterations (Appendix J.1)"),
+         "B": ("toyB_long_{}", "as A but 256 hidden, 20k steps/half-step, 30 iterations"),
+         "C": ("toyC_fine_{}", "as A but N=50, γ=0.004 (same T=0.2), 256 hidden"),
+         "D": ("toyD_wide_{}", "as A but 256 hidden, prior std = 1.3 x data std")}
+
+
+def toy_sweep_table() -> str:
+    """Energy distance (generated vs data) at the last iteration for the toy configurations A-D."""
+    names = ["moons", "scurve", "circles", "checkerboard"]
+    out = "| dataset | " + " | ".join(f"{k}: last (min)" for k in SWEEP) + " |\n|---|" + "---|" * len(SWEEP) + "\n"
+    for ds in names:
+        cells = []
+        for k, (pat, _) in SWEEP.items():
+            f = os.path.join(RUNS, pat.format(ds), "metrics.jsonl")
+            rows = read_jsonl(f)
+            cells.append(f"{rows[-1]['energy_dist_data']:.4f} ({min(r['energy_dist_data'] for r in rows):.4f})" if rows else "")
+            pngs = sorted(glob.glob(os.path.join(RUNS, pat.format(ds), "iter*.png")))
+            if pngs and k != "A":
+                shutil.copy(pngs[-1], os.path.join(FIGS, f"toy{k}_{ds}_last.png"))
+        out += f"| {ds} | " + " | ".join(cells) + " |\n"
+    with open(os.path.join(FIGS, "toy_sweep_table.md"), "w") as fh:
+        fh.write(out)
+    return out
+
+
 def fid_table(runs=None) -> str:
     """Markdown table of FID per DSB iteration for the CIFAR-10 runs (also written to figures/fid_table.md)."""
     dirs = sorted(glob.glob(os.path.join(RUNS, "cifar10_*"))) if runs is None else [os.path.join(RUNS, r) for r in runs]
@@ -143,4 +168,5 @@ if __name__ == "__main__":
     toy_figure()
     cifar_figures()
     print(fid_table())
+    print(toy_sweep_table())
     print("figures:", sorted(os.listdir(FIGS)))
