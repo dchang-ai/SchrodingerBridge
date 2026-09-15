@@ -1,0 +1,12 @@
+# GPU training environment (.venv): python 3.12, installed with
+#   uv pip install --python .venv/bin/python "jax[cuda12]" equinox optax numpy pillow matplotlib pytest
+jax[cuda12]>=0.6
+equinox>=0.13
+optax>=0.2
+numpy
+pillow
+matplotlib
+pytest
+# FID evaluation environment (.venv-fid, CPU torch):
+#   uv pip install --python .venv-fid/bin/python --index-url https://download.pytorch.org/whl/cpu torch torchvision
+#   uv pip install --python .venv-fid/bin/python pytorch-fid numpy pillow scipy
