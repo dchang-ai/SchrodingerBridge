@@ -19,14 +19,14 @@ import numpy as np
 
 from . import ipf
 from .networks import ReferenceResidual, ScaledIncrement
-from .schedule import OUReference, constant_gammas, symmetric_gammas
+from .schedule import OUReference, constant_gammas, geometric_gammas, symmetric_gammas
 
 
 @dataclasses.dataclass
 class DSBConfig:
     # chain / reference dynamics
     num_steps: int = 20                 # N
-    gamma_schedule: str = "symmetric"   # "symmetric" (App. J.2) or "constant"
+    gamma_schedule: str = "symmetric"   # "symmetric" (power ramp, App. J.2), "geometric" or "constant"
     gamma_min: float = 1e-5
     gamma_max: float = 1e-1
     gamma_power: float = 1.0            # ramp exponent of the symmetric schedule (1 = paper)
@@ -59,6 +59,8 @@ class DSBConfig:
     def reference(self) -> OUReference:
         if self.gamma_schedule == "symmetric":
             g = symmetric_gammas(self.num_steps, self.gamma_min, self.gamma_max, self.gamma_power)
+        elif self.gamma_schedule == "geometric":
+            g = geometric_gammas(self.num_steps, self.gamma_min, self.gamma_max)
         elif self.gamma_schedule == "constant":
             g = constant_gammas(self.num_steps, self.gamma)
         else:

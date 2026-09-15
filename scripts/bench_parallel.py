@@ -160,7 +160,7 @@ def main():
     p.add_argument("--out", default=None)
     args = p.parse_args()
     if args.tiny:
-        args.ch, args.big_ch, args.num_steps, args.per_device_batch, args.global_batch, args.per_device_cache, args.steps = 8, 16, 4, 4, 16, 8, 2
+        args.ch, args.big_ch, args.num_steps, args.per_device_batch, args.global_batch, args.per_device_cache, args.steps = 8, 8, 4, 4, 16, 8, 2
 
     node_info()
     devices = jax.devices()

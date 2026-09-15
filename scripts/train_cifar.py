@@ -32,6 +32,7 @@ def main():
     p.add_argument("--num-steps", type=int, default=50)
     p.add_argument("--gamma-max", type=float, default=0.1)
     p.add_argument("--gamma-power", type=float, default=1.0, help="ramp exponent of the symmetric gamma schedule (1 = paper)")
+    p.add_argument("--gamma-schedule", default="symmetric", choices=["symmetric", "geometric"])
     p.add_argument("--iters", type=int, default=10, help="number of DSB (IPF) iterations L")
     p.add_argument("--steps", type=int, default=5000, help="gradient steps per half-step")
     p.add_argument("--first-steps", type=int, default=None, help="steps for the first backward half-step")
@@ -49,7 +50,7 @@ def main():
     args = p.parse_args()
 
     cfg = DSBConfig(
-        num_steps=args.num_steps, gamma_schedule="symmetric", gamma_min=1e-5, gamma_max=args.gamma_max, gamma_power=args.gamma_power,
+        num_steps=args.num_steps, gamma_schedule=args.gamma_schedule, gamma_min=1e-5, gamma_max=args.gamma_max, gamma_power=args.gamma_power,
         prior_mean=0.0, prior_std=1.0,
         num_dsb_iters=args.iters, train_steps=args.steps, first_train_steps=args.first_steps,
         batch_size=args.batch, cache_size=args.cache_size, cache_refresh=args.cache_refresh,

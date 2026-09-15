@@ -46,6 +46,21 @@ def symmetric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float =
     return np.concatenate([half, half[::-1]]).astype(np.float32)
 
 
+def geometric_gammas(num_steps: int, gamma_min: float = 1e-5, gamma_max: float = 1e-1) -> np.ndarray:
+    """Symmetric geometric ramp: geomspace(gamma_min, gamma_max, N/2) mirrored.
+
+    Consecutive steps differ by a constant factor ((gamma_max/gamma_min)^(2/(N-2)), 1.47 for
+    N = 50), so the noise injected at every step stays comparable to the noise level already
+    present.  For N = 50 the horizon is T = 0.63, which is the horizon quoted in Figure 4 of
+    the paper for its N = 50 CelebA model.
+    """
+    n = num_steps
+    if n % 2 != 0:
+        raise ValueError("num_steps must be even for the symmetric schedule")
+    half = np.geomspace(gamma_min, gamma_max, n // 2)
+    return np.concatenate([half, half[::-1]]).astype(np.float32)
+
+
 def constant_gammas(num_steps: int, gamma: float) -> np.ndarray:
     return np.full((num_steps,), gamma, dtype=np.float32)
 
