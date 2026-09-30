@@ -21,8 +21,10 @@ import numpy as np
 from dsb import ipf
 from dsb.data import cifar_to_uint8, load_cifar10, sample_cifar_batch
 from dsb.networks import UNet, count_params
+from dsb.made import ImageMADE, MADE
+from dsb.conv_made import ConvMADE
 from dsb.train import DSBConfig, run_dsb, run_dsb_parallel
-from dsb.utils import Logger, image_grid, save_png
+from dsb.utils import Logger, image_grid, save_model_config, save_png
 
 
 def main():
@@ -30,6 +32,7 @@ def main():
     p.add_argument("--data", default="data")
     p.add_argument("--outdir", default="runs/cifar10")
     p.add_argument("--num-steps", type=int, default=50)
+    p.add_argument("--gamma-min", type=float, default=1e-5)
     p.add_argument("--gamma-max", type=float, default=0.1)
     p.add_argument("--gamma-power", type=float, default=1.0, help="ramp exponent of the symmetric gamma schedule (1 = paper)")
     p.add_argument("--gamma-schedule", default="symmetric", choices=["symmetric", "geometric"])
@@ -40,6 +43,14 @@ def main():
     p.add_argument("--cache-size", type=int, default=512)
     p.add_argument("--cache-refresh", type=int, default=400)
     p.add_argument("--ch", type=int, default=64)
+    p.add_argument("--architecture", choices=["unet", "made", "made-image", "made-conv", "strict"], default="unet")
+    p.add_argument("--hidden", type=int, default=2048)
+    p.add_argument("--depth", type=int, default=3)
+    p.add_argument("--components", type=int, default=8)
+    p.add_argument("--output-scale", type=float, default=0.01)
+    p.add_argument("--legacy-ramp", action="store_true")
+    p.add_argument("--no-ref-residual", action="store_true")
+    p.add_argument("--checkpoint-every", type=int, default=1000)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--warmup", type=int, default=0, help="linear lr warm-up steps (restarts with the optimizer at every half-step)")
     p.add_argument("--loss-weighting", default="none", choices=["none", "gamma"])
@@ -51,14 +62,20 @@ def main():
     p.add_argument("--single", action="store_true", help="use the simple single-device driver instead of the data-parallel one")
     p.add_argument("--bf16", action="store_true", help="bfloat16 network evaluation (master weights, loss and chain stay float32)")
     args = p.parse_args()
+    if not 0 < args.gamma_min <= args.gamma_max < float("inf"):
+        p.error("require finite step sizes with 0 < --gamma-min <= --gamma-max")
+    if args.architecture != "unet" and args.dropout:
+        p.error("--dropout is only supported for --architecture unet")
 
     cfg = DSBConfig(
-        num_steps=args.num_steps, gamma_schedule=args.gamma_schedule, gamma_min=1e-5, gamma_max=args.gamma_max, gamma_power=args.gamma_power,
+        num_steps=args.num_steps, gamma_schedule=args.gamma_schedule, gamma_min=args.gamma_min, gamma_max=args.gamma_max, gamma_power=args.gamma_power,
+        gamma_legacy_ramp=args.legacy_ramp,
         prior_mean=0.0, prior_std=1.0,
         num_dsb_iters=args.iters, train_steps=args.steps, first_train_steps=args.first_steps,
         batch_size=args.batch, cache_size=args.cache_size, cache_refresh=args.cache_refresh,
         lr=args.lr, warmup=args.warmup, grad_clip=1.0, ema_decay=0.999, loss_weighting=args.loss_weighting, scaled_output=args.scaled_output,
-        use_dropout=args.dropout > 0, ref_residual=True, seed=args.seed, log_every=100,
+        use_dropout=args.dropout > 0, ref_residual=not args.no_ref_residual, seed=args.seed, log_every=100,
+        checkpoint_every=args.checkpoint_every,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
@@ -78,13 +95,27 @@ def main():
     def sample_prior(key, n):
         return jax.random.normal(key, (n, 3, 32, 32))
 
-    def make_net(key):
+    def make_forward_net(key):
         return UNet(in_channels=3, ch=args.ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2,
                     attn_resolutions=(16,), image_size=32, dropout=args.dropout, key=key)
 
-    print("params per network:", count_params(make_net(jax.random.PRNGKey(0))), flush=True)
-    with open(os.path.join(args.outdir, "model.json"), "w") as fh:
-        json.dump(dict(ch=args.ch, dropout=args.dropout, bf16=args.bf16, single=args.single, argv=sys.argv[1:]), fh, indent=2)
+    def make_backward_net(key):
+        if args.architecture != "unet":
+            net_type = {"made": MADE, "strict": MADE, "made-image": ImageMADE, "made-conv": ConvMADE}[args.architecture]
+            return net_type(dim=3 * 32 * 32, hidden=args.hidden, depth=args.depth,
+                        components=args.components, num_steps=args.num_steps,
+                        mode="strict" if args.architecture == "strict" else "score",
+                        output_scale=args.output_scale, key=key)
+        return make_forward_net(key)
+
+    save_model_config(args.outdir, dict(vars(args), argv=sys.argv[1:]), p)
+    template = make_backward_net(jax.random.PRNGKey(0))
+    print("backward parameters:", count_params(template), flush=True)
+    if args.architecture != "unet":
+        with open(os.path.join(args.outdir, "architecture.json"), "w") as fh:
+            json.dump(template.metadata(), fh, indent=2)
+    del template
+    print("forward parameters:", count_params(make_forward_net(jax.random.PRNGKey(0))), flush=True)
     grid = image_grid(np.asarray(images[:64]))
     save_png(os.path.join(args.outdir, "data.png"), grid)
 
@@ -124,7 +155,8 @@ def main():
             fh.write(json.dumps(dict(n=n, **m)) + "\n")
         return m
 
-    common = dict(make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=images,
+    common = dict(make_forward_net=make_forward_net, make_backward_net=make_backward_net,
+                  sample_data=sample_data, sample_prior=sample_prior, data=images,
                   outdir=args.outdir, eval_fn=eval_fn, logger=logger)
     if args.single:
         run_dsb(cfg, **common)

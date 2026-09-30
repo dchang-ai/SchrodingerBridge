@@ -17,8 +17,10 @@ import numpy as np
 from dsb import ipf
 from dsb.data import sample_pool, toy_dataset
 from dsb.networks import ToyMLP
+from dsb.made import MADE
+from dsb.local_made import LocalMADE
 from dsb.train import DSBConfig, run_dsb
-from dsb.utils import Logger
+from dsb.utils import Logger, save_model_config
 
 
 def energy_distance(x: np.ndarray, y: np.ndarray) -> float:
@@ -38,6 +40,17 @@ def main():
     p.add_argument("--steps", type=int, default=10000)
     p.add_argument("--batch", type=int, default=512)
     p.add_argument("--hidden", type=int, default=128)
+    p.add_argument("--forward-hidden", type=int, default=None, help="hold F's MLP width fixed when sweeping B")
+    p.add_argument("--architecture", choices=["mlp", "made", "strict", "local"], default="mlp")
+    p.add_argument("--depth", type=int, default=2)
+    p.add_argument("--components", type=int, default=8)
+    p.add_argument("--output-scale", type=float, default=0.01)
+    p.add_argument("--no-ref-residual", action="store_true")
+    p.add_argument("--checkpoint-every", type=int, default=1000)
+    p.add_argument("--max-degree", type=int, default=None)
+    p.add_argument("--radius", type=float, default=None)
+    p.add_argument("--planar", action="store_true")
+    p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--prior-std", type=float, default=None, help="default: std of the data (Technique 4)")
     p.add_argument("--prior-scale", type=float, default=1.0, help="multiply the (data-derived) prior std by this factor")
     p.add_argument("--cache-size", type=int, default=10_000)
@@ -45,8 +58,11 @@ def main():
     p.add_argument("--outdir", default=None)
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
+    if args.architecture != "local" and (args.max_degree is not None or args.radius is not None or args.planar):
+        p.error("--max-degree, --radius and --planar require --architecture local")
     outdir = args.outdir or f"runs/toy_{args.dataset}"
     os.makedirs(outdir, exist_ok=True)
+    save_model_config(outdir, vars(args), p)
 
     rng = np.random.default_rng(args.seed)
     pool = jnp.asarray(toy_dataset(args.dataset, 100_000, rng))
@@ -57,7 +73,9 @@ def main():
         num_steps=args.num_steps, gamma_schedule="constant", gamma=args.gamma,
         prior_mean=data_mean, prior_std=prior_std,        # OU reference with alpha = 1/sigma^2
         num_dsb_iters=args.iters, train_steps=args.steps, batch_size=args.batch,
-        cache_size=args.cache_size, cache_refresh=args.cache_refresh, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=1000,
+        cache_size=args.cache_size, cache_refresh=args.cache_refresh, lr=args.lr, ema_decay=0.999,
+        ref_residual=not args.no_ref_residual, seed=args.seed, log_every=1000,
+        checkpoint_every=args.checkpoint_every,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
@@ -70,8 +88,29 @@ def main():
     def sample_prior(key, n):
         return cfg.prior_mean + cfg.prior_std * jax.random.normal(key, (n, 2))
 
-    def make_net(key):
+    def make_forward_net(key):
+        return ToyMLP(dim=2, hidden=args.forward_hidden or args.hidden, key=key)
+
+    def make_backward_net(key):
+        if args.architecture != "mlp":
+            options = dict(dim=2, hidden=args.hidden, depth=args.depth, components=args.components,
+                           mode="strict" if args.architecture == "strict" else "score",
+                           num_steps=args.num_steps, output_scale=args.output_scale, key=key)
+            if args.architecture == "local":
+                return LocalMADE(**options, max_degree=args.max_degree, radius=args.radius, planar=args.planar)
+            return MADE(**options)
         return ToyMLP(dim=2, hidden=args.hidden, key=key)
+
+    if args.architecture != "mlp":
+        template = make_backward_net(jax.random.PRNGKey(args.seed))
+        metadata = template.metadata()
+        metadata["allocated_parameters"] = sum(
+            int(leaf.size) for leaf in jax.tree_util.tree_leaves(template))
+        with open(os.path.join(outdir, "architecture.json"), "w") as fh:
+            json.dump(metadata, fh, indent=2)
+        if args.architecture == "local":
+            with open(os.path.join(outdir, "graph.json"), "w") as fh:
+                json.dump(template.graph(), fh)
 
     def eval_fn(n, b_net, f_net, key):
         import matplotlib
@@ -85,6 +124,9 @@ def main():
         x0_data = sample_data(k3, n_eval, pool)
         fwd = ipf.simulate(f_net, x0_data, gammas, k4, forward=True)                    # xs[i] = X_{i+1}
         gen = np.asarray(bwd.xs[-1])
+        np.savez_compressed(os.path.join(outdir, f"samples_iter{n:03d}.npz"),
+                            generated=gen, data=np.asarray(x0_data),
+                            forward=np.asarray(fwd.xs[-1]), prior=np.asarray(xN))
         ed = energy_distance(gen[:2000], np.asarray(x0_data[:2000]))
         # backward endpoint vs data; forward endpoint vs prior
         fwd_end = np.asarray(fwd.xs[-1])
@@ -114,7 +156,8 @@ def main():
             fh.write(json.dumps(dict(n=n, **m)) + "\n")
         return m
 
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=pool,
+    run_dsb(cfg, make_forward_net=make_forward_net, make_backward_net=make_backward_net,
+            sample_data=sample_data, sample_prior=sample_prior, data=pool,
             outdir=outdir, eval_fn=eval_fn, logger=logger)
 
 

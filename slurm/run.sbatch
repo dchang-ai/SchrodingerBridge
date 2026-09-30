@@ -7,22 +7,21 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=24G
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=16G
 #SBATCH --time=04:00:00
-#SBATCH --exclude=192-222-51-248,192-222-56-117,192-222-56-240,129-146-8-103,129-146-99-85,192-222-54-123   # GH200 nodes are aarch64; the 129-146-*/192-222-* VMs mount NFS over a VPN and hang importing jax
-#SBATCH --output=/mnt/data0/shared/dominic/SchrodingerBridge/logs/%x_%j.out   # logs/ must exist before sbatch
-#SBATCH --error=/mnt/data0/shared/dominic/SchrodingerBridge/logs/%x_%j.err
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.err
 set -euo pipefail
 
-PROJ=/mnt/data0/shared/dominic/SchrodingerBridge
-VENV=${VENV:-$PROJ/.venv}              # uv venv: python 3.12 + jax[cuda12] + equinox + optax (+ numpy, pillow, matplotlib)
+PROJ=${PROJ:-$SLURM_SUBMIT_DIR}
+VENV=${VENV:-$PROJ/.venv}
 
-# /home is not mounted on compute nodes; only /mnt/data0/shared is.
-export HOME=/mnt/data0/shared/dominic
-export XDG_CACHE_HOME=$HOME/.cache
-export TMPDIR=$HOME/tmp
-mkdir -p "$XDG_CACHE_HOME" "$TMPDIR" "$PROJ/logs"
+export XDG_CACHE_HOME="$PROJ/.cache"
+export MPLCONFIGDIR="$XDG_CACHE_HOME/matplotlib"
+export TMPDIR="$PROJ/.scratch/${SLURM_JOB_ID}.${SLURM_STEP_ID:-batch}"
+mkdir -p "$XDG_CACHE_HOME" "$MPLCONFIGDIR" "$TMPDIR" "$PROJ/logs"
+trap 'rm -rf "$TMPDIR"' EXIT
 
 # Good-neighbour settings on shared nodes: no GPU memory preallocation, bounded CPU threads.
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
@@ -36,6 +35,7 @@ export PYTHONUNBUFFERED=1
 source "$VENV/bin/activate"
 cd "$PROJ"
 echo "== job $SLURM_JOB_ID on $(hostname) | gpus=$CUDA_VISIBLE_DEVICES | cpus=$SLURM_CPUS_PER_TASK | $(date)"
+python -c 'import jax; print("JAX devices:", jax.devices(), flush=True); assert jax.default_backend() == "gpu", "GPU required"'
 nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader --id=0 || true   # (no pipe to head: SIGPIPE + pipefail killed a job)
 echo "== running: $*"
 "$@"

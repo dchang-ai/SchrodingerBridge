@@ -19,6 +19,22 @@ def load_tree(path: str, like):
     return eqx.tree_deserialise_leaves(path, like)
 
 
+def save_model_config(outdir: str, config: dict, parser):
+    """Compare launch settings after filling defaults absent from older metadata."""
+    path = os.path.join(outdir, "model.json")
+    comparable = lambda d: {k: v for k, v in d.items() if k not in ("argv", "outdir", "checkpoint_every")}
+    if os.path.exists(path):
+        with open(path) as fh:
+            previous = json.load(fh)
+        previous = {**vars(parser.parse_args(previous.get("argv", []))), **previous}
+        if comparable(previous) != comparable(config):
+            raise ValueError(f"Model configuration differs from {path}. Use a new output directory.")
+        return
+    with open(path + ".tmp", "w") as fh:
+        json.dump(config, fh, indent=2)
+    os.replace(path + ".tmp", path)
+
+
 def image_grid(images_uint8: np.ndarray, nrow: int = 8, pad: int = 1) -> np.ndarray:
     """(n, 3, h, w) uint8 -> (H, W, 3) grid."""
     x = np.asarray(images_uint8)
@@ -46,7 +62,8 @@ class Logger:
         self.t0 = time.time()
 
     def log(self, **kw):
-        kw = {k: (float(v) if hasattr(v, "__float__") else v) for k, v in kw.items()}
+        kw = {k: (float(v) if hasattr(v, "__float__") and not isinstance(v, (int, float)) else v)
+              for k, v in kw.items()}
         kw["time"] = round(time.time() - self.t0, 1)
         with open(self.path, "a") as f:
             f.write(json.dumps(kw) + "\n")

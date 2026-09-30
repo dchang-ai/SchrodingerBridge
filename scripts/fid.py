@@ -2,15 +2,24 @@
 per DSB iteration (cf. Figure 6 of the paper).  Runs with the CPU torch venv (.venv-fid):
 
     .venv-fid/bin/python scripts/fid.py runs/cifar10 [--ref data/cifar10_train_fid_stats.npz]
+
+    .venv-fid/bin/python scripts/fid.py runs/cifar10 --watch --expected-iters 10
+
+Watch mode requires checkpoint-committed metrics rows for iterations 0 through 9.
+Statistics and FID caches are checked against sample and reference checksums.
+Run only one evaluator per run directory.
 """
 from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
+import math
 import os
 import pickle
 import re
+import tempfile
 import time
 
 import numpy as np
@@ -56,6 +65,35 @@ def load_cifar_train(root: str) -> np.ndarray:
     return np.concatenate(xs)
 
 
+def _atomic_write(path, write):
+    """Use the checkpoint writer's publication protocol without importing JAX."""
+    directory = os.path.dirname(path) or "."
+    fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=directory)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            write(fh)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+        fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def _committed_rows(path, limit=-1):
+    if not os.path.exists(path):
+        return []
+    with open(path, "rb") as fh:
+        # A writer may still be appending the final line, including a UTF-8 character.
+        return [json.loads(line) for line in fh.read(limit).splitlines(keepends=True)
+                if line.endswith(b"\n")]
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("rundir")
@@ -63,40 +101,84 @@ def main():
     p.add_argument("--ref", default="data/cifar10_train_fid_stats.npz")
     p.add_argument("--max-ref", type=int, default=50000)
     p.add_argument("--threads", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", "4")))
+    p.add_argument("--watch", action="store_true", help="wait for checkpoint-committed sample files")
+    p.add_argument("--expected-iters", type=int, help="with --watch, require every index 0..N-1")
+    p.add_argument("--poll-seconds", type=float, default=60, help="watch polling interval (default: 60)")
     args = p.parse_args()
+    if args.watch != (args.expected_iters is not None):
+        p.error("--watch and --expected-iters must be supplied together")
+    if args.expected_iters is not None and args.expected_iters <= 0:
+        p.error("--expected-iters must be positive")
+    if not math.isfinite(args.poll_seconds) or args.poll_seconds <= 0:
+        p.error("--poll-seconds must be finite and positive")
     torch.set_num_threads(args.threads)
 
-    model = InceptionV3([3], resize_input=True, normalize_input=True).eval()
+    model = None
     if os.path.exists(args.ref):
-        d = np.load(args.ref)
-        mu_r, sig_r = d["mu"], d["sigma"]
+        with np.load(args.ref) as d:
+            mu_r, sig_r = d["mu"], d["sigma"]
     else:
         print("computing reference statistics on CIFAR-10 train ...", flush=True)
+        model = InceptionV3([3], resize_input=True, normalize_input=True).eval()
         imgs = load_cifar_train(args.data)[: args.max_ref]
         mu_r, sig_r = stats(activations(model, imgs))
-        np.savez(args.ref, mu=mu_r, sigma=sig_r)
+        _atomic_write(args.ref, lambda fh: np.savez(fh, mu=mu_r, sigma=sig_r))
 
+    with open(args.ref, "rb") as fh:
+        reference_sha256 = hashlib.file_digest(fh, "sha256").hexdigest()
     out_path = os.path.join(args.rundir, "fid.jsonl")
+    rows = {row["n"]: row for row in _committed_rows(out_path)}
     done = set()
-    if os.path.exists(out_path):
-        done = {json.loads(l)["n"] for l in open(out_path)}
-    for f in sorted(glob.glob(os.path.join(args.rundir, "gen_iter*.npz"))):
-        n = int(re.search(r"gen_iter(\d+)", f).group(1))
-        if n in done:
-            continue
-        stats_file = f.replace(".npz", "_fidstats.npz")
-        if os.path.exists(stats_file):
-            d = np.load(stats_file)
-            mu, sig, n_img = d["mu"], d["sigma"], int(d["n"])
-        else:
-            imgs = np.load(f)["images"]
-            mu, sig = stats(activations(model, imgs))
-            n_img = len(imgs)
-            np.savez(stats_file, mu=mu, sigma=sig, n=n_img)
-        fid = frechet_distance(mu, sig, mu_r, sig_r)
-        print(f"iter {n}: FID = {fid:.2f}  ({n_img} samples)", flush=True)
-        with open(out_path, "a") as fh:
-            fh.write(json.dumps({"n": n, "fid": fid, "num_samples": n_img}) + "\n")
+    required = set(range(args.expected_iters)) if args.watch else set()
+    while True:
+        committed = None
+        if args.watch:
+            resume_path = os.path.join(args.rundir, "ckpt", "resume.json")
+            limit = 0
+            if os.path.exists(resume_path):
+                with open(resume_path) as fh:
+                    limit = json.load(fh)["logs"].get("metrics.jsonl", 0)
+            committed = {row["n"] for row in _committed_rows(
+                os.path.join(args.rundir, "metrics.jsonl"), limit)}
+        for f in sorted(glob.glob(os.path.join(args.rundir, "gen_iter*.npz"))):
+            match = re.fullmatch(r"gen_iter([0-9]+)\.npz", os.path.basename(f))
+            if match is None:
+                continue
+            n = int(match.group(1))
+            if n in done or (args.watch and (n not in required or n not in committed)):
+                continue
+            with open(f, "rb") as fh:
+                sample_sha256 = hashlib.file_digest(fh, "sha256").hexdigest()
+            previous = rows.get(n, {})
+            if (previous.get("sample_sha256") == sample_sha256
+                    and previous.get("reference_sha256") == reference_sha256):
+                done.add(n)
+                continue
+            stats_file = f.removesuffix(".npz") + "_fidstats.npz"
+            mu = None
+            if os.path.exists(stats_file):
+                with np.load(stats_file) as d:
+                    if str(d.get("sample_sha256", "")) == sample_sha256:
+                        mu, sig, n_img = d["mu"], d["sigma"], int(d["n"])
+            if mu is None:
+                with np.load(f) as d:
+                    imgs = d["images"]
+                if model is None:
+                    model = InceptionV3([3], resize_input=True, normalize_input=True).eval()
+                mu, sig = stats(activations(model, imgs))
+                n_img = len(imgs)
+                _atomic_write(stats_file, lambda fh: np.savez(
+                    fh, mu=mu, sigma=sig, n=n_img, sample_sha256=sample_sha256))
+            fid = frechet_distance(mu, sig, mu_r, sig_r)
+            rows[n] = {"n": n, "fid": fid, "num_samples": n_img,
+                       "sample_sha256": sample_sha256, "reference_sha256": reference_sha256}
+            journal = "".join(json.dumps(rows[i]) + "\n" for i in sorted(rows)).encode()
+            _atomic_write(out_path, lambda fh: fh.write(journal))
+            done.add(n)
+            print(f"iter {n}: FID = {fid:.2f}  ({n_img} samples)", flush=True)
+        if not args.watch or required.issubset(done & committed):
+            break
+        time.sleep(args.poll_seconds)
 
 
 if __name__ == "__main__":

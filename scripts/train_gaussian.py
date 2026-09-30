@@ -17,8 +17,9 @@ import numpy as np
 
 from dsb import ipf
 from dsb.networks import ToyMLP
+from dsb.made import MADE
 from dsb.train import DSBConfig, run_dsb
-from dsb.utils import Logger
+from dsb.utils import Logger, save_model_config
 
 BETA = (np.sqrt(5.0) - 1.0) / 2.0
 
@@ -28,11 +29,18 @@ def main():
     p.add_argument("--dim", type=int, default=5)
     p.add_argument("--a", type=float, default=0.1)
     p.add_argument("--hidden", type=int, default=128)
+    p.add_argument("--architecture", choices=["mlp", "made", "strict"], default="mlp")
+    p.add_argument("--depth", type=int, default=2)
+    p.add_argument("--components", type=int, default=8)
+    p.add_argument("--output-scale", type=float, default=0.025)
+    p.add_argument("--checkpoint-every", type=int, default=1000)
     p.add_argument("--iters", type=int, default=10)
     p.add_argument("--steps", type=int, default=5000)
     p.add_argument("--outdir", default="runs/gaussian")
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
+    os.makedirs(args.outdir, exist_ok=True)
+    save_model_config(args.outdir, vars(args), p)
 
     d, a = args.dim, args.a
     cfg = DSBConfig(
@@ -40,6 +48,7 @@ def main():
         prior_mean=-a, prior_std=1.0, ref_alpha=0.0,                # Brownian reference
         num_dsb_iters=args.iters, train_steps=args.steps, batch_size=128,
         cache_size=2000, cache_refresh=500, lr=1e-4, ema_decay=0.999, ref_residual=True, seed=args.seed, log_every=500,
+        checkpoint_every=args.checkpoint_every,
     )
     ref = cfg.reference()
     gammas = jnp.asarray(ref.gammas)
@@ -51,7 +60,14 @@ def main():
     def sample_prior(key, n):
         return -a + jax.random.normal(key, (n, d))
 
-    def make_net(key):
+    def make_forward_net(key):
+        return ToyMLP(dim=d, hidden=args.hidden, key=key)
+
+    def make_backward_net(key):
+        if args.architecture != "mlp":
+            return MADE(dim=d, hidden=args.hidden, depth=args.depth, components=args.components,
+                        mode="score" if args.architecture == "made" else "strict",
+                        num_steps=cfg.num_steps, output_scale=args.output_scale, key=key)
         return ToyMLP(dim=d, hidden=args.hidden, key=key)
 
     def eval_fn(n, b_net, f_net, key):
@@ -70,7 +86,8 @@ def main():
         return m
 
     print(f"target: mean={a} var=1 cov={BETA:.4f}; N={ref.num_steps} T={ref.horizon:.3f}")
-    run_dsb(cfg, make_net=make_net, sample_data=sample_data, sample_prior=sample_prior, data=jnp.zeros(()),
+    run_dsb(cfg, make_forward_net=make_forward_net, make_backward_net=make_backward_net,
+            sample_data=sample_data, sample_prior=sample_prior, data=jnp.zeros(()),
             outdir=args.outdir, eval_fn=eval_fn, logger=logger)
 
 

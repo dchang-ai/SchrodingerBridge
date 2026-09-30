@@ -42,6 +42,8 @@ def cifar_to_float(x_uint8):
 
 
 def cifar_to_uint8(x):
+    if not bool(jnp.all(jnp.isfinite(x))):
+        raise FloatingPointError("Cannot export nonfinite CIFAR pixels")
     return jnp.clip(jnp.round((x + 1.0) * 127.5), 0, 255).astype(jnp.uint8)
 
 

@@ -19,6 +19,8 @@ import numpy as np
 from dsb import ipf
 from dsb.data import cifar_to_uint8
 from dsb.networks import ReferenceResidual, ScaledIncrement, UNet
+from dsb.made import ImageMADE, MADE
+from dsb.conv_made import ConvMADE
 from dsb.train import DSBConfig, Nets, output_scales
 from dsb.utils import image_grid, save_png
 
@@ -26,13 +28,23 @@ from dsb.utils import image_grid, save_png
 def load(rundir: str, ckpt: str | None, ch: int | None = None):
     cfg = DSBConfig(**json.load(open(os.path.join(rundir, "config.json"))))
     model_json = os.path.join(rundir, "model.json")
+    model = json.load(open(model_json)) if os.path.exists(model_json) else {}
     if ch is None:
-        ch = json.load(open(model_json))["ch"] if os.path.exists(model_json) else 64
+        ch = model.get("ch", 64)
     ckdir = os.path.join(rundir, "ckpt")
     if ckpt is None:
         ckpt = json.load(open(os.path.join(ckdir, "latest.json")))["file"]
-    f_net = b_net = UNet(in_channels=3, ch=ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2, attn_resolutions=(16,),
-                         image_size=32, key=jax.random.PRNGKey(0))
+    f_net = UNet(in_channels=3, ch=ch, ch_mult=(1, 2, 2, 2), num_res_blocks=2,
+                 attn_resolutions=(16,), image_size=32, key=jax.random.PRNGKey(0))
+    if model.get("architecture", "unet") == "unet":
+        b_net = f_net
+    else:
+        net_type = {"made": MADE, "strict": MADE, "made-image": ImageMADE, "made-conv": ConvMADE}[model["architecture"]]
+        b_net = net_type(
+            dim=3072, hidden=model["hidden"], depth=model["depth"], components=model["components"],
+            mode="strict" if model["architecture"] == "strict" else "score",
+            num_steps=cfg.num_steps, output_scale=model["output_scale"], key=jax.random.PRNGKey(0),
+        )
     ref = cfg.reference()
     if cfg.scaled_output:
         sf, sb = output_scales(ref)

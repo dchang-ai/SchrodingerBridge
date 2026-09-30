@@ -13,3 +13,7 @@ slurm-*.out
 logs/*.out
 logs/*.err
 cluster_probe/*.log
+.cache/
+.scratch/
+output/
+.test-deps/

@@ -3,8 +3,10 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 from dsb import ipf
+from dsb.data import cifar_to_uint8
 from dsb.networks import ScaledIncrement, ToyMLP
 from dsb.schedule import OUReference, symmetric_gammas
 from dsb.train import output_scales
@@ -141,3 +143,18 @@ def test_legacy_ramp_matches_first_runs():
     assert np.isclose(g.sum(), 2.400, atol=2e-3) and g.max() < 0.1
     g2 = symmetric_gammas(50, 1e-5, 1e-1)
     assert np.isclose(g2.sum(), 2.500, atol=2e-3)
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_cifar_export_rejects_nonfinite_pixels(value):
+    pixels = jnp.zeros((2, 3, 32, 32)).at[1, 2, 31, 31].set(value)
+    with pytest.raises(FloatingPointError, match="nonfinite"):
+        cifar_to_uint8(pixels)
+
+
+def test_cifar_export_preserves_rounding_and_clipping():
+    pixels = jnp.asarray([-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0])
+    exported = cifar_to_uint8(pixels)
+    assert isinstance(exported, jax.Array)
+    np.testing.assert_array_equal(exported, np.asarray([0, 0, 64, 128, 191, 255, 255], dtype=np.uint8))
+    assert exported.dtype == jnp.uint8

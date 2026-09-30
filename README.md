@@ -35,6 +35,9 @@ runs the learnt backward chain from `p_prior`.
 |---|---|
 | `dsb/schedule.py` | symmetric γ schedule (App. J.2), OU/Brownian reference dynamics, closed-form reference marginals (Technique 2) |
 | `dsb/networks.py` | Equinox networks returning the *increment* `mean − x`: `ToyMLP` (Fig. 9) and a reduced Nichol–Dhariwal `UNet` (64 channels, ~9M params) |
+| `dsb/made.py` | normalized Gaussian-mixture MADE densities and score-derived backward increments |
+| `dsb/local_made.py` | sparse MADE conditioners with degree, radius and straight-line planarity constraints |
+| `dsb/conv_made.py` | two-stream causal convolutional MADE for raster-ordered RGB images |
 | `dsb/ipf.py` | trajectory simulation with `lax.scan`, Prop. 3 regression targets, trajectory cache (Alg. 3), mean-matching loss, Adam + EMA train step |
 | `dsb/train.py` | the IPF loop of Algorithm 1: alternating half-steps, cache refreshes, warm starts, checkpoints/resume, evaluation hooks |
 | `dsb/data.py` | CIFAR-10 loader (uint8 on device, random flips), 2-D toy datasets |
@@ -47,6 +50,27 @@ runs the learnt backward chain from `p_prior`.
 | `scripts/bench_*.py`, `scripts/audit/` | GPU benchmarks behind the multi-GPU table; the exact-regressor IPF experiments cited in the Gaussian section |
 | `tests/test_dsb.py` | CPU unit tests (schedule, closed-form marginals, targets, indices, wrappers) |
 | `slurm/` | `run.sbatch` (GPU) and `cpu.sbatch` runners, `toy_suite.sh`, `toy_sweep.sh`, `overnight.sh` (the exact commands of the reported runs) |
+
+## Backward MADE models
+
+`--architecture made` replaces B with `gain[k] * grad_x log q_theta(x | k)`,
+where q is a normalized autoregressive Gaussian-mixture density. The original
+F network family and DSB mean-matching objective remain in place. This is not
+maximum-likelihood training, and q need not equal the current process marginal.
+The score parameterization restricts B to a conservative field.
+
+For toys, `--forward-hidden 128` holds F's width fixed while `--hidden` changes B.
+`--architecture local` additionally accepts `--max-degree`, `--radius` and
+`--planar`. These constrain the conditioner graph, including its time-feature
+inputs, not the mixture-head arithmetic or the differentiated score graph.
+`--architecture strict` is a triangular-increment negative control, not the
+score adapter. It returns raw mixture means and does not apply `--output-scale`.
+
+CIFAR also supports `--architecture made-image` with a dense raster-RGB
+conditioner and `--architecture made-conv` with a causal convolutional
+conditioner. For the latter, specify a channel count divisible by three,
+for example `--hidden 48 --depth 8 --components 4`. `scripts/sample.py` restores
+the selected architecture from the run metadata.
 
 ## Running on the cluster
 
@@ -62,10 +86,33 @@ sbatch --job-name=toys slurm/run.sbatch bash slurm/toy_suite.sh
 sbatch slurm/cpu.sbatch .venv-fid/bin/python scripts/fid.py runs/cifar10_N50   # after samples exist
 ```
 
-`slurm/run.sbatch` activates the project venv (`.venv`, python 3.12 + `jax[cuda12]` 0.11 +
-equinox 0.13 + optax 0.2), relocates `$HOME` (not mounted on compute nodes), disables XLA
-GPU-memory preallocation and pins CPU threads to the allocation.  Runs are resumable: the
-driver reloads the latest half-step checkpoint in `<outdir>/ckpt/`.
+CIFAR exposes `--gamma-min` (default `1e-5`) and `--gamma-max` (default `0.1`).
+They must be finite with `0 < gamma_min <= gamma_max`. Changing the schedule
+requires a new output directory rather than resuming an incompatible checkpoint.
+
+`slurm/run.sbatch` activates `.venv` by default. Override `PROJ` and `VENV` to use
+another project directory or environment. It uses project-local cache and
+scratch directories, checks that JAX sees the allocated GPUs, disables
+GPU-memory preallocation and pins CPU threads to the allocation.
+
+Re-running the same training command resumes from an atomic optimizer-step
+checkpoint. It restores raw and EMA parameters, Adam state, RNG keys, the
+cache regeneration key and the training cursor. Uncommitted log rows are
+discarded. Configuration, model structure and runtime layout are checked
+before restoration. `--checkpoint-every` may change without changing the
+training trajectory. Bitwise replay additionally depends on the execution
+environment and backend determinism.
+
+Nonfinite losses stop training at logging or checkpoint boundaries. Floating-point
+model and optimizer state is checked on restore and before checkpoint publication.
+Backward inference weights are published only after evaluation succeeds, leaving
+the pre-evaluation resume snapshot available if evaluation fails. CIFAR export
+rejects NaN and infinities before quantization rather than turning them into pixels.
+
+Older weight-only checkpoints remain loadable but cannot provide exact
+optimizer or RNG recovery. Use a new output directory for a different
+configuration. FID watch mode waits for the checkpoint's committed metrics
+prefix and validates sample and reference checksums before accepting results.
 
 ## Multi-GPU training
 
@@ -75,8 +122,10 @@ parameters, Adam and EMA state are replicated, every device works on `batch/ndev
 (the flattened 9M/36M-parameter gradient), and cache sampling is fused into the jitted train
 step.  `run_dsb_parallel` in `dsb/train.py` is the corresponding driver (default in
 `scripts/train_cifar.py`; `--single` selects the plain single-device driver `run_dsb`, which is
-kept as the readable reference implementation).  Checkpoints are single-copy and interchangeable
-between the two drivers.  Measured on A100-80GB (`scripts/bench_parallel.py`, `logs/bench*.out`),
+kept as the readable reference implementation). Inference weight checkpoints
+are single-copy. Exact training resume requires the same driver and, for data
+parallelism, the same device count and compute dtype.
+Measured on A100-80GB (`scripts/bench_parallel.py`, `logs/bench*.out`),
 U-Net with 64 channels unless noted, 128 samples per device, one cache refresh (512 trajectories
 per device, N = 50) per 400 steps included in "eff.":
 
@@ -346,8 +395,8 @@ the implementation notes).
 ### Status
 
 All runs are complete (2026-09-16 05:50 UTC): Gaussian check, toys and toy sweep, the four
-single-GPU CIFAR runs (`N20` all 12 iterations; `N50`, `N50q`, `N20q` stopped after 10, 8 and 8
-once their FID curves had flattened), and the three big runs `big_N50q` (12 iterations, 6 GPUs,
+single-GPU CIFAR runs (`N20`, `N50`, `N50q`, `N20q` with 12, 10, 8 and 9 evaluated backward
+stages, respectively), and the three big runs `big_N50q` (12 iterations, 6 GPUs,
 10.5 h), `big_N100q` (12 iterations, 6 GPUs, 7 h) and `big_N50geo` (12 iterations; 6 GPUs for the
 first two, then 8 GPUs of `lambda-hyperplane0` for the rest after a 2-GPU resume attempt hung in
 the NCCL clique set-up for its whole allocation, `logs/cifar_big_geo_525234.err`).
